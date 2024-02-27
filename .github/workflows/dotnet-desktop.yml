@@ -7,6 +7,7 @@ name: Compile Build
 # the main branch, when either C# or project files changed
 on:
   push:
+    branches: [ master ]
   pull_request:
     branches: [ master ]
     paths-ignore:
