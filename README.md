@@ -1,5 +1,8 @@
 # Aviator Editor
+
 ![](https://cdn.discordapp.com/emojis/1212119918133379182.webp)
+
+[![Compile Build](https://github.com/AtaeKurri/Aviator/actions/workflows/dotnet-desktop.yml/badge.svg?event=push)](https://github.com/AtaeKurri/Aviator/actions/workflows/dotnet-desktop.yml)
 
 **Warning: This editor is still in very early development and** ***NOT*** **production-ready.**
 
