@@ -39,6 +39,7 @@ namespace Aviator.Core.EditorData.Nodes
             }
         }
 
+        [JsonIgnore]
         public int AttributeCount { get => attributes.Count; }
 
         [JsonIgnore]
@@ -96,7 +97,7 @@ namespace Aviator.Core.EditorData.Nodes
         public TreeNode Parent { get => parent; }
 
         [JsonIgnore]
-        public Document? ParentWorkspace = null;
+        public Document ParentWorkspace = null;
 
         /// <summary>
         /// Indicate that a node cannot have children.
@@ -163,6 +164,8 @@ namespace Aviator.Core.EditorData.Nodes
         protected TreeNode()
         {
             Children = null;
+            Attributes = null;
+            isExpanded = true;
         }
 
         public TreeNode(Document workspace)
@@ -213,8 +216,9 @@ namespace Aviator.Core.EditorData.Nodes
             {
                 foreach (NodeAttribute na in e.NewItems)
                 {
-                    if (na != null)
-                        na.ParentNode = this;
+                    attr = na;
+                    if (attr != null)
+                        attr.ParentNode = this;
                 }
             }
         }
@@ -245,7 +249,7 @@ namespace Aviator.Core.EditorData.Nodes
         public NodeAttribute? GetAttr(string name)
         {
             var attrs = from NodeAttribute na in attributes
-                        where na != null && !string.IsNullOrEmpty(na.Name) && na.Name == name
+                        where na != null && !string.IsNullOrEmpty(na.AttrName) && na.AttrName == name
                         select na;
             if (attrs != null && attrs.Count() > 0) return attrs.First();
             return null;
@@ -256,7 +260,7 @@ namespace Aviator.Core.EditorData.Nodes
             NodeAttribute na = GetAttr(name);
             if (na == null)
             {
-                na = new NodeAttribute(editWindow);
+                na = new NodeAttribute(name, this, editWindow);
                 attributes.Add(na);
             }
             na.EditWindow = editWindow;

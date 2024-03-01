@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
+    <Nullable>annotations</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -13,27 +13,17 @@
   <ItemGroup>
     <None Remove="Icon.ico" />
     <None Remove="Images\Icon.png" />
-    <None Remove="Templates\Empty File.avtr" />
-    <None Remove="Templates\Empty File.txt" />
+    <None Remove="Templates\Empty Project.avtr" />
     <None Remove="Templates\Empty Project.txt" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Icon.ico" />
-    <Content Include="Templates\Empty File.avtr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Templates\Empty File.txt">
-      <Generator>MSBuild:Compile</Generator>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Templates\Empty Project.avtrproj">
+    <Content Include="Templates\Empty Project.avtr">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Templates\Empty Project.txt">
+      <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

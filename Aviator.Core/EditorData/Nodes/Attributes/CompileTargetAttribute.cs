@@ -8,7 +8,7 @@ namespace Aviator.Core.EditorData.Nodes.Attributes
 {
     public enum ECompileTarget
     {
-        Lua,
+        LuaSTG,
         Chambersite,
         All
     }

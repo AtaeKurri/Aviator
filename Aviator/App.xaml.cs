@@ -1,4 +1,5 @@
 ﻿using Aviator.Core;
+using Aviator.Core.EditorData.Nodes.Attributes;
 using Aviator.Properties;
 using System.Configuration;
 using System.Data;
@@ -23,10 +24,10 @@ namespace Aviator
             set { Settings.Default.LastUsedPath = value; }
         }
 
-        public int CompileTarget
+        public ECompileTarget CompileTarget
         {
-            get => Settings.Default.CompileTarget;
-            set { Settings.Default.CompileTarget = value; }
+            get => (ECompileTarget)Settings.Default.CompileTarget;
+            set { Settings.Default.CompileTarget = (int)value; }
         }
 
         public string LSTGExecutablePath

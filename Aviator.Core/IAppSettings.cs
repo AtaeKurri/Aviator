@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Aviator.Core.EditorData.Nodes.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,7 @@ namespace Aviator.Core
     {
         public string AuthorName { get; }
         public string LastUsedPath { get; set; }
-        public int CompileTarget { get; }
+        public ECompileTarget CompileTarget { get; }
         public string LSTGExecutablePath { get; }
     }
 }

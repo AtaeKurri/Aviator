@@ -12,17 +12,26 @@
         Title="Aviator Editor v1.0.0"
         Height="680"
         Width="800"
-        WindowState="Maximized">
+        WindowState="Maximized"
+        Closing="window_Closing">
     <!--Style="{DynamicResource CustomWindowStyle}">-->
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="NewCommand_CanExecute" Executed="NewCommand_Executed"/>
         <CommandBinding Command="Open" CanExecute="OpenCommand_CanExecute" Executed="OpenCommand_Executed"/>
         <CommandBinding Command="Save" CanExecute="SaveCommand_CanExecute" Executed="SaveCommand_Executed"/>
 
+        <CommandBinding Command="Undo" CanExecute="UndoCommand_CanExecute" Executed="UndoCommand_Executed"/>
+        <CommandBinding Command="Redo" CanExecute="RedoCommand_CanExecute" Executed="RedoCommand_Executed"/>
+
         <CommandBinding Command="{x:Static cmds:EditorCommands.OpenSettings}" Executed="OpenSettingsCommand_Executed"/>
         <CommandBinding Command="{x:Static cmds:EditorCommands.RunProject}" Executed="RunProjectCommand_Executed" CanExecute="RunProjectCommand_CanExecute"/>
+
+        <CommandBinding Command="{x:Static cmds:EditorCommands.ToBeforeState}" Executed="ToBeforeStateCommand_Executed"/>
+        <CommandBinding Command="{x:Static cmds:EditorCommands.ToChildState}" Executed="ToChildStateCommand_Executed"/>
+        <CommandBinding Command="{x:Static cmds:EditorCommands.ToAfterState}" Executed="ToAfterStateCommand_Executed"/>
     </Window.CommandBindings>
     <Window.Resources>
+        <!--#region Templates-->
         <tools:NodePickerContentTemplateSelector x:Key="NodePickerContentTemplateSelector"/>
         <tools:NodePickerTemplateSelector x:Key="NodePickerTemplateSelector"/>
         <DataTemplate x:Key="NodePickerSeparator" DataType="{x:Type ndpkr:NodePickerItem}">
@@ -49,6 +58,217 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
         </DataTemplate>
+        <!--#endregion-->
+        <!--#region Styles-->
+        <Style x:Key="DataGridStyle" TargetType="DataGrid">
+            <Setter Property="HorizontalGridLinesBrush" Value="Gray"/>
+            <Setter Property="VerticalGridLinesBrush" Value="Gray"/>
+        </Style>
+        
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.Static.Checked.Fill" Color="#FF595959"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.Static.Checked.Stroke" Color="#FF262626"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.MouseOver.Stroke" Color="#FF27C7F7"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.MouseOver.Fill" Color="#FFCCEEFB"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.MouseOver.Checked.Stroke" Color="#FF1CC4F7"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.MouseOver.Checked.Fill" Color="#FF82DFFB"/>
+        <PathGeometry x:Key="TreeArrow" Figures="M0,0 L0,6 L6,0 z"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.Static.Fill" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="TreeViewItem.TreeArrow.Static.Stroke" Color="#FF818181"/>
+        <Style x:Key="ExpandCollapseToggleStyle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border Background="Transparent" Height="16" Padding="5,5,5,5" Width="16">
+                            <Path x:Name="ExpandPath" Data="{StaticResource TreeArrow}"
+                                  Fill="{StaticResource TreeViewItem.TreeArrow.Static.Fill}"
+                                  Stroke="{StaticResource TreeViewItem.TreeArrow.Static.Stroke}">
+                                <Path.RenderTransform>
+                                    <RotateTransform Angle="135" CenterY="3" CenterX="3"/>
+                                </Path.RenderTransform>
+                            </Path>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="RenderTransform" TargetName="ExpandPath">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="180" CenterY="3" CenterX="3"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Fill" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.Static.Checked.Fill}"/>
+                                <Setter Property="Stroke" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.Static.Checked.Stroke}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Stroke" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.MouseOver.Stroke}"/>
+                                <Setter Property="Fill" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.MouseOver.Fill}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter Property="Stroke" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.MouseOver.Checked.Stroke}"/>
+                                <Setter Property="Fill" TargetName="ExpandPath"
+                                        Value="{StaticResource TreeViewItem.TreeArrow.MouseOver.Checked.Fill}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TreeViewItemFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border>
+                            <Rectangle Margin="0,0,0,0"
+                               StrokeThickness="5"
+                               Stroke="Black"
+                               StrokeDashArray="1 2"
+                               Opacity="0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DottedTreeViewItems" TargetType="{x:Type TreeViewItem}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment"
+                    Value="{Binding Path=HorizontalContentAlignment,
+                RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
+            <Setter Property="VerticalContentAlignment"
+                    Value="{Binding Path=VerticalContentAlignment,
+                RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
+            <Setter Property="Padding" Value="1,0,0,0"/>
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource TreeViewItemFocusVisual}"/>
+            <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition MinWidth="19" Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <Rectangle x:Name="VerLn" Width="1" Grid.RowSpan="2"
+                                       SnapsToDevicePixels="False" ClipToBounds="True" VerticalAlignment="Stretch">
+                                <Rectangle.Fill>
+                                    <DrawingBrush Viewport="0,0,3,6" ViewportUnits="Absolute"
+                                                  TileMode="Tile" Stretch="None">
+                                        <DrawingBrush.Drawing>
+                                            <GeometryDrawing>
+                                                <GeometryDrawing.Brush>
+                                                    <SolidColorBrush Color="#FF888888"/>
+                                                </GeometryDrawing.Brush>
+                                                <GeometryDrawing.Geometry>
+                                                    <RectangleGeometry Rect="0,0,3,3"/>
+                                                </GeometryDrawing.Geometry>
+                                            </GeometryDrawing>
+                                        </DrawingBrush.Drawing>
+                                    </DrawingBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+
+                            <ToggleButton x:Name="Expander"
+                                          Style="{StaticResource ExpandCollapseToggleStyle}"
+                                          IsChecked="{Binding Path=IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"/>
+                            <Border Name="Bd"
+                                    Grid.Column="1"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter x:Name="PART_Header"
+                                                  ContentSource="Header"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost"
+                                            Grid.Row="1"
+                                            Grid.Column="1"
+                                            Grid.ColumnSpan="2"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded"
+                                     Value="false">
+                                <Setter TargetName="ItemsHost"
+                                        Property="Visibility"
+                                        Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="HasItems"
+                                     Value="false">
+                                <Setter TargetName="Expander"
+                                        Property="Visibility"
+                                        Value="Hidden"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="HasHeader"
+                                               Value="false"/>
+                                    <Condition Property="Width"
+                                               Value="Auto"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_Header"
+                                        Property="MinWidth"
+                                        Value="75"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="HasHeader"
+                                               Value="false"/>
+                                    <Condition Property="Height"
+                                               Value="Auto"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_Header"
+                                        Property="MinHeight"
+                                        Value="19"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsSelected"
+                                     Value="true">
+                                <Setter TargetName="Bd"
+                                        Property="Background"
+                                        Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected"
+                                               Value="true"/>
+                                    <Condition Property="IsSelectionActive"
+                                               Value="false"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd"
+                                        Property="Background"
+                                        Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled"
+                                     Value="false">
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!--#endregion-->
     </Window.Resources>
     <DockPanel>
         <!--#region Menu and Toolbar -->
@@ -89,7 +309,11 @@
 
                     </MenuItem>
                 </MenuItem>
-                <MenuItem Header="_Settings" Command="cmds:EditorCommands.OpenSettings"/>
+                <MenuItem Header="_Settings">
+                    <MenuItem Header="General Settings" Command="cmds:EditorCommands.OpenSettings" CommandParameter="0"/>
+                    <MenuItem Header="Compiler Settings" Command="cmds:EditorCommands.OpenSettings" CommandParameter="1"/>
+                    <MenuItem Header="Project Settings" Command="cmds:EditorCommands.OpenSettings" CommandParameter="2"/>
+                </MenuItem>
                 <MenuItem Header="_About">
                     <MenuItem Header="_Help"/>
                     <MenuItem Header="_Changelog"/>
@@ -130,7 +354,7 @@
                         <fa:FontAwesome Icon="Close" FontSize="25"/>
                     </Button>
                     <Separator/>
-                    <Button ToolTip="Run Project">
+                    <Button Command="cmds:EditorCommands.RunProject" ToolTip="Run Project">
                         <fa:FontAwesome Icon="Play" FontSize="25"/>
                     </Button>
                     <Button ToolTip="Spell Card Debug">
@@ -140,15 +364,18 @@
                         <fa:FontAwesome Icon="Hourglass" FontSize="25"/>
                     </Button>
                     <Separator/>
-                    <Button ToolTip="Insert Before">
+                    <RadioButton ToolTip="Insert Before"
+                                 IsChecked="{Binding IsBeforeState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowUp" FontSize="25"/>
-                    </Button>
-                    <Button ToolTip="Insert After">
+                    </RadioButton>
+                    <RadioButton ToolTip="Insert After"
+                                 IsChecked="{Binding IsAfterState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowDown" FontSize="25"/>
-                    </Button>
-                    <Button ToolTip="Insert Child">
+                    </RadioButton>
+                    <RadioButton ToolTip="Insert Child"
+                                 IsChecked="{Binding IsChildState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowRight" FontSize="25"/>
-                    </Button>
+                    </RadioButton>
                 </ToolBar>
             </ToolBarTray>
         </Border>
@@ -179,7 +406,9 @@
 
             <DataGrid x:Name="NodePropertiesData" Grid.Column="2" Margin="4,10,10,11.2" AutoGenerateColumns="False"
                       CanUserResizeRows="False" CanUserAddRows="False" VerticalScrollBarVisibility="Visible"
-                      ItemsSource="{Binding ContentTemplate.VisualTree, ElementName=WorkspacesTab}">
+                      ItemsSource="{Binding ContentTemplate.VisualTree, ElementName=WorkspacesTab}"
+                      Style="{StaticResource ResourceKey=DataGridStyle}"
+                      DataGridCell.Selected="DataGrid_GotFocus">
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
                         <Setter Property="BorderBrush" Value="White"/>
@@ -191,7 +420,7 @@
                     </Style>
                 </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Attributes" Binding="{Binding Path=Name}" IsReadOnly="True">
+                    <DataGridTextColumn Header="Attributes" Binding="{Binding Path=AttrName}" IsReadOnly="True">
                         <DataGridTextColumn.CellStyle>
                             <Style TargetType="DataGridCell">
                                 <Setter Property="Background" Value="#FFDDDDDD"/>
@@ -208,17 +437,41 @@
                     <DataGridTemplateColumn Header="Values" Width="100">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-
+                                <TextBlock Text="{Binding Path=AttributeInput_InvokeCommand, UpdateSourceTrigger=Default, Mode=TwoWay}"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
                                 <ComboBox IsEditable="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                          Height="20" BorderThickness="0"
+                                          Height="20" Loaded="ComboBox_Loaded" BorderThickness="0"
                                           IsTextSearchEnabled="False"
+                                          Text="{Binding Path=AttributeInput_InvokeCommand, UpdateSourceTrigger=LostFocus, Mode=TwoWay}"
                                           Tag="{Binding Path=EditWindow}" BorderBrush="White"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn CanUserResize="False" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="true">
+                                        <Setter Property="Background" Value="White"/>
+                                        <Setter Property="BorderBrush" Value="White"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTemplateColumn.CellStyle>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="..." Width="20" 
+                                    Command="cmds:EditorCommands.NodeAttrMore" CommandParameter="{Binding Path=EditWindow}" 
+                                    Tag="{Binding Path=This, UpdateSourceTrigger=PropertyChanged}">
+                                    <Button.CommandBindings>
+                                        <CommandBinding Command="{x:Static cmds:EditorCommands.NodeAttrMore}" Executed="AdjustPropCommand_Executed"/>
+                                    </Button.CommandBindings>
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
@@ -256,13 +509,15 @@
                         <TabControl.ContentTemplate>
                             <DataTemplate>
                                 <TreeView x:Name="TreeWorkspace" ItemsSource="{Binding TreeNodes}"
-                                          VirtualizingPanel.IsVirtualizing="True">
+                                          VirtualizingPanel.IsVirtualizing="True"
+                                          SelectedItemChanged="WorkSpaceSelectedChanged"
+                                          ItemContainerStyle="{StaticResource DottedTreeViewItems}">
                                     <TreeView.ItemTemplate>
                                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding DisplayString}" VerticalAlignment="Center"/>
                                                 <StackPanel.ContextMenu>
-                                                    <ContextMenu>
+                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                         <ContextMenu.ItemsSource>
                                                             <CompositeCollection>
                                                                 <MenuItem Header="_Edit..."/>

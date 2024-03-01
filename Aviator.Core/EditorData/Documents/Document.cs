@@ -8,16 +8,21 @@ using System.Threading.Tasks;
 using Microsoft.Win32;
 using System.IO;
 using System.Windows;
+using Aviator.Core.EditorData.Commands;
+using Aviator.Core.EditorData.EditorTraces;
+using System.Xml.Linq;
 
 namespace Aviator.Core.EditorData.Documents
 {
     public class Document : INotifyPropertyChanged
     {
+        public ProjectConfiguration Configuration { get; set; }
+
         public string FilePath { get; set; } = "";
 
         public string FileName
         {
-            get => RawFileName + (true ? " *" : "");
+            get => RawFileName + (IsUnsaved ? " *" : "");
             set
             {
                 RawFileName = value;
@@ -35,38 +40,58 @@ namespace Aviator.Core.EditorData.Documents
             }
         }
 
+        public bool IsUnsaved
+        {
+            get
+            {
+                try { return CommandStack.Peek() != SavedCommand; }
+                catch (InvalidOperationException) { return SavedCommand != null; }
+            }
+        }
+
         public string RawFileName { get; set; }
         public int FileHash { get; } = 0;
 
         public DocumentCollection Parent;
 
-        public static Document NewByType(string extension, int maxHash, string name, string path, bool supressMessage = false)
-        {
-            if (extension == ".avtrproj")
-            {
-                return new ProjectDocument(maxHash, supressMessage)
-                {
-                    FileName = name,
-                    FilePath = path,
-                    IsSelected = true
-                };
-            }
-            else
-            {
-                return new PlainDocument(maxHash, supressMessage)
-                {
-                    FileName = name,
-                    FilePath = path,
-                    IsSelected = true
-                };
-            }
-        }
+        public Stack<Command> CommandStack = [];
+        public Stack<Command> UndoCommandStack = [];
+        public Command? SavedCommand = null;
 
         public WorkTree TreeNodes { get; set; } = [];
         
-        public Document(int hash, bool suppressMessage)
+        public Document(int hash, bool suppressMessage, string name, string path, bool _isSelected)
         {
+            FileName = name;
+            FilePath = path;
+            IsSelected = _isSelected;
             FileHash = hash;
+            Configuration = new(FilePath);
+        }
+
+        public virtual void OnOpen()
+        {
+
+        }
+
+        public virtual void OnEditing(object sender, PropertyChangedEventArgs e)
+        {
+
+        }
+
+        public virtual void OnClosing()
+        {
+            RevertUntilSaved();
+            var toRemove = new List<EditorTrace>();
+            foreach (EditorTrace trace in EditorTraceContainer.Traces)
+            {
+                if (trace.Source == this)
+                {
+                    toRemove.Add(trace);
+                }
+            }
+            foreach (EditorTrace trace in toRemove)
+                EditorTraceContainer.Traces.Remove(trace);
         }
 
         public bool Save(IAppSettings appSettings, bool saveAs = false)
@@ -157,6 +182,61 @@ namespace Aviator.Core.EditorData.Documents
                 MessageBox.Show(ex.Message);
             }
             return root;
+        }
+
+        #region Commands
+
+        public void Undo()
+        {
+            CommandStack.Peek().Undo();
+            UndoCommandStack.Push(CommandStack.Pop());
+            RaisePropertyChanged("FileName");
+        }
+
+        public void Redo()
+        {
+            UndoCommandStack.Peek().Execute();
+            CommandStack.Push(UndoCommandStack.Pop());
+            RaisePropertyChanged("FileName");
+        }
+
+        public void PushSavedCommand()
+        {
+            try { SavedCommand = CommandStack.Peek(); }
+            catch (InvalidOperationException) { SavedCommand = null; }
+            RaisePropertyChanged("FileName");
+        }
+
+        public bool AddAndExecuteCommand(Command command)
+        {
+            if (command == null)
+                return false;
+            CommandStack.Push(command);
+            CommandStack.Peek().Execute();
+            UndoCommandStack = [];
+
+            RaisePropertyChanged("FileName");
+            return true;
+        }
+
+        #endregion
+
+        private void RevertUntilSaved()
+        {
+            if (SavedCommand == null || CommandStack.Contains(SavedCommand))
+            {
+                while (CommandStack.Count != 0 && CommandStack.Peek() != SavedCommand)
+                {
+                    Undo();
+                }
+            }
+            else
+            {
+                while (UndoCommandStack.Count != 0 && UndoCommandStack.Peek() != SavedCommand)
+                {
+                    Redo();
+                }
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

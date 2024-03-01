@@ -1,1 +1,1 @@
-﻿An Empty Aviator Project. Meant to be used as the base file for every project.
+﻿An Empty Aviator Project File.

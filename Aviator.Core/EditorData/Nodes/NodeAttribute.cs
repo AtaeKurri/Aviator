@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Aviator.Core.EditorData.Commands;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,24 +13,34 @@ namespace Aviator.Core.EditorData.Nodes
     public class NodeAttribute : INotifyPropertyChanged, ICloneable
     {
         [JsonProperty]
-        public string Name;
+        protected string attrName;
+        [JsonIgnore]
+        public string AttrName => attrName;
+
         [JsonProperty]
-        public string value;
+        public string attrValue;
 
         [JsonIgnore]
-        public virtual string Value
+        public virtual string AttrValue
         {
-            get => this.value;
+            get => attrValue;
             set
             {
-                this.value = value;
+                attrValue = value;
                 RaisePropertyChanged("Value");
                 ParentNode?.RaisePropertyChanged("DisplayString");
             }
         }
 
         [JsonIgnore]
-        public TreeNode ParentNode;
+        protected TreeNode parent;
+
+        [JsonIgnore]
+        public TreeNode ParentNode
+        {
+            get => parent;
+            set => parent = value;
+        }
 
         private string editWindow;
         [JsonProperty]
@@ -43,40 +54,50 @@ namespace Aviator.Core.EditorData.Nodes
             }
         }
 
+        [JsonIgnore]
+        public NodeAttribute This => this;
+
         [JsonConstructor]
         public NodeAttribute() { }
 
         public NodeAttribute(string name, TreeNode parent)
         {
-            Name = name;
-            ParentNode = parent;
-            Value = "";
+            attrName = name;
+            this.parent = parent;
+            attrValue = "";
         }
 
         public NodeAttribute(string name, string value = "", string editWindow = "")
             : this()
         {
-            Name = name;
-            Value = value;
+            attrName = name;
+            attrValue = value;
             EditWindow = editWindow;
         }
 
         public NodeAttribute(string name, TreeNode parent, string editWindow)
             : this(name, parent)
         {
-            EditWindow = EditWindow;
+            EditWindow = editWindow;
         }
 
         public NodeAttribute(string name, string value, TreeNode parent)
             : this(name, parent)
         {
-            Value = value;
+            attrValue = value;
         }
 
         public NodeAttribute(string name, TreeNode parent, string editWindow, string value)
             : this(name, value, parent)
         {
             EditWindow = editWindow;
+        }
+
+        [JsonIgnore]
+        public string AttributeInput_InvokeCommand
+        {
+            get => attrValue;
+            set => parent.ParentWorkspace.AddAndExecuteCommand(new EditAttributeCommand(this, attrValue, value));
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -87,7 +108,7 @@ namespace Aviator.Core.EditorData.Nodes
 
         public virtual object Clone()
         {
-            return new NodeAttribute(Name, ParentNode) { Value = this.Value, EditWindow = this.EditWindow };
+            return new NodeAttribute(attrName, parent) { attrValue = this.attrValue, EditWindow = this.EditWindow };
         }
     }
 }

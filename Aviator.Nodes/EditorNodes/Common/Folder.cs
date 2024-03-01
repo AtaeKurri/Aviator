@@ -23,8 +23,8 @@ namespace Aviator.Nodes.EditorNodes.Common
         [JsonIgnore, NodeAttribute("Folder")]
         public string Name
         {
-            get => CheckAttr("Name").Value;
-            set => CheckAttr("Name").Value = value;
+            get => CheckAttr().attrValue;
+            set => CheckAttr().attrValue = value;
         }
 
         public override string ToString()

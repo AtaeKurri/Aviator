@@ -7,18 +7,40 @@
         mc:Ignorable="d"
         Title="Settings"
         Height="500"
-        Width="700">
+        Width="700"
+        ResizeMode="NoResize">
     <DockPanel>
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Right">
-            <Button Content="Apply" Margin="5,5" Height="32" Width="64" Click="Apply_Click"/>
+            <Button Content="Ok" Margin="5,5" Height="32" Width="64" Click="Ok_Click"/>
             <Button Content="Cancel" Margin="5,5" Height="32" Width="64" Click="Cancel_Click"/>
+            <Button Content="Apply" Margin="5,5" Height="32" Width="64" Click="Apply_Click"/>
         </StackPanel>
         <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,0,-0.4,-0.4">
             <TabItem x:Name="GeneralTab" Header="General">
-                
+
             </TabItem>
             <TabItem x:Name="CompileTab" Header="Compiler">
-
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="40*"/>
+                        <ColumnDefinition Width="121*"/>
+                        <ColumnDefinition Width="533*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Content="Compile Target" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <Label Content="(Restart needed)" HorizontalAlignment="Left" Margin="170,10,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Grid.Column="2" Height="26"/>
+                    <ComboBox IsEditable="True" ItemsSource="{Binding CompileTargetArray, ElementName=window}"
+                              HorizontalAlignment="Left" Height="26" Margin="10,10,0,0" VerticalAlignment="Top"
+                              Width="160" Grid.Column="2"
+                              Text="{Binding CompileTarget, ElementName=window}"/>
+                    <Label Content="LuaSTG Executable Path" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <TextBox HorizontalAlignment="Left" Height="26" Margin="10,41,0,0" VerticalAlignment="Top"
+                             Width="470" Grid.Column="2" TextWrapping="Wrap"
+                             Text="{Binding LuaSTGExecPath, ElementName=window}"/>
+                    <Button Content="..." HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Height="26" Width="26" Grid.Column="2"
+                            Margin="485,41,0,0"
+                            Click="LuaSTGExecPath_Clicked"/>
+                </Grid>
             </TabItem>
             <TabItem x:Name="ProjectTab" Header="Project Settings">
 
