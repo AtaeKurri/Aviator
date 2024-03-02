@@ -99,6 +99,14 @@ namespace Aviator.Core.EditorData.Nodes
         [JsonIgnore]
         public Document ParentWorkspace = null;
 
+        [JsonIgnore]
+        protected bool Activated = false;
+
+        [JsonIgnore]
+        private TreeNode LinkedPrevious = null;
+        [JsonIgnore]
+        private TreeNode LinkedNext = null;
+
         /// <summary>
         /// Indicate that a node cannot have children.
         /// </summary>
@@ -159,6 +167,31 @@ namespace Aviator.Core.EditorData.Nodes
             }
         }
 
+        public void RaiseRemove(OnRemoveEventArgs e)
+        {
+            if (e.Parent == null || e.Parent.Activated)
+            {
+                if (!isBanned)
+                {
+                    OnVirtualRemove?.Invoke(e);
+                }
+                OnRemove?.Invoke(e);
+                OnCreateEventArgs args = new OnCreateEventArgs { Parent = this };
+                foreach (TreeNode node in Children)
+                    node.RaiseRemove(e);
+            }
+        }
+
+        public void RaiseVirtuallyRemove(OnRemoveEventArgs e)
+        {
+            if (Activated && isBanned)
+            {
+                OnVirtualRemove?.Invoke(e);
+                foreach (TreeNode node in Children)
+                    node.RaiseVirtuallyRemove(e);
+            }
+        }
+
         #endregion
 
         protected TreeNode()
@@ -203,11 +236,6 @@ namespace Aviator.Core.EditorData.Nodes
 
         #endregion
         #region Event Handlers
-
-        private void ChildrenChanged(object o, NotifyCollectionChangedEventArgs e)
-        {
-
-        }
 
         private void AttributesChanged(object o, NotifyCollectionChangedEventArgs e)
         {
@@ -284,12 +312,113 @@ namespace Aviator.Core.EditorData.Nodes
             isExpanded = source.isExpanded;
         }
 
+        #endregion
+        #region Children
+        
+        public bool ValidateChild(TreeNode sourceNode, TreeNode nodeToValidate)
+        {
+            return true;
+        }
+
+        private void ChildrenChanged(object o, NotifyCollectionChangedEventArgs e)
+        {
+            TreeNode node, previousNode = null;
+            if (e.OldItems != null)
+            {
+                for (int index = 0; index < e.OldItems.Count; index++)
+                {
+                    node = (TreeNode)e.OldItems[index];
+                    node.RaiseRemove(new OnRemoveEventArgs() { Parent = this });
+                    if (index + e.OldStartingIndex != 0)
+                    {
+                        if (previousNode == null)
+                            previousNode = Children[index + e.OldStartingIndex - 1];
+                        previousNode.LinkedNext = node.LinkedNext;
+                        if (node.LinkedNext != null)
+                            node.LinkedNext.LinkedPrevious = previousNode;
+                    }
+                    else
+                    {
+                        LinkedNext = node.LinkedNext;
+                        if (LinkedNext != null)
+                            node.LinkedNext.LinkedPrevious = this;
+                        previousNode = this;
+                    }
+                }
+            }
+            if (e.NewItems != null)
+            {
+                for (int index = 0; index < e.NewItems.Count; index++)
+                {
+                    node = (TreeNode)e.NewItems[index];
+                    node.RaiseCreate(new OnCreateEventArgs() { Parent = this });
+                    node.parent = this;
+                    if (index + e.NewStartingIndex != 0)
+                    {
+                        if (previousNode == null)
+                            previousNode = Children[index + e.NewStartingIndex - 1];
+                        node.LinkedPrevious = previousNode;
+                        node.LinkedNext = previousNode.LinkedNext;
+                        if (previousNode.LinkedNext != null)
+                            previousNode.LinkedNext.LinkedPrevious = node;
+                        previousNode.LinkedNext = node;
+                    }
+                    else
+                    {
+                        node.LinkedPrevious = this;
+                        node.LinkedNext = LinkedNext;
+                        if (LinkedNext != null)
+                            LinkedNext.LinkedPrevious = node;
+                        LinkedNext = node;
+                    }
+                    previousNode = node;
+                }
+            }
+        }
+
         public void AddChild(TreeNode node)
         {
             Children.Add(node);
         }
 
+        public void InsertChild(TreeNode node, int index)
+        {
+            Children.Insert(index, node);
+        }
+
+        public void RemoveChild(TreeNode node)
+        {
+            Children.Remove(node);
+        }
+
+        public void ClearChildSelection()
+        {
+            isSelected = false;
+            foreach (TreeNode child in Children)
+                child.ClearChildSelection();
+        }
+
         public abstract object Clone();
+
+        public IEnumerator<TreeNode> GetForwardNodes()
+        {
+            TreeNode node = this;
+            while (node.LinkedNext != null)
+            {
+                yield return node;
+                node = node.LinkedNext;
+            }
+        }
+
+        public IEnumerator<TreeNode> GetBackwardNodes()
+        {
+            TreeNode node = this;
+            while (node.LinkedPrevious != null)
+            {
+                yield return node;
+                node = node.LinkedPrevious;
+            }
+        }
 
         #endregion
         #region Traces
@@ -308,6 +437,20 @@ namespace Aviator.Core.EditorData.Nodes
         {
             return [];
         }
+
+        #endregion
+
+        #region ToChambersite
+
+        public void CBS_NewNamespace(string name)
+        {
+
+        }
+
+        #endregion
+        #region ToLua
+
+
 
         #endregion
     }

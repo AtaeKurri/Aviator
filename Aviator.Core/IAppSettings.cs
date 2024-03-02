@@ -11,7 +11,5 @@ namespace Aviator.Core
     {
         public string AuthorName { get; }
         public string LastUsedPath { get; set; }
-        public ECompileTarget CompileTarget { get; }
-        public string LSTGExecutablePath { get; }
     }
 }

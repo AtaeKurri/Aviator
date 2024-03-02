@@ -16,13 +16,31 @@ namespace Aviator.Nodes.EditorNodePicker
 
         public ObservableCollection<NodePickerTab> NodePickerTabs = [];
 
+        public Dictionary<string, AddNode> NodeFuncs = [];
+
         public AbstractNodePicker(IMainWindow parentWindow)
         {
             ParentWindow = parentWindow;
             Initialize();
+            InitializeData();
         }
 
         public abstract void Initialize();
+
+        private void InitializeData()
+        {
+            NodeFuncs = [];
+            foreach (NodePickerTab nodeTab in NodePickerTabs)
+            {
+                foreach (NodePickerItem nodeItem in nodeTab)
+                {
+                    if (!nodeItem.IsSeparator)
+                    {
+                        NodeFuncs.Add(nodeItem.Tag, nodeItem.AddNodeMethod);
+                    }
+                }
+            }
+        }
 
         public IEnumerator<NodePickerTab> GetEnumerator()
         {

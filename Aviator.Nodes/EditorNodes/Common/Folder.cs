@@ -1,5 +1,6 @@
 ﻿using Aviator.Core.EditorData.Documents;
 using Aviator.Core.EditorData.Nodes;
+using Aviator.Core.EditorData.Nodes.Attributes;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -9,7 +10,8 @@ using System.Threading.Tasks;
 
 namespace Aviator.Nodes.EditorNodes.Common
 {
-    internal class Folder : TreeNode
+    [CompileTarget(ECompileTarget.All)]
+    public class Folder : TreeNode
     {
         [JsonConstructor]
         private Folder() : base() { }

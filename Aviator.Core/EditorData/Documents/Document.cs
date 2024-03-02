@@ -17,6 +17,7 @@ namespace Aviator.Core.EditorData.Documents
     public class Document : INotifyPropertyChanged
     {
         public ProjectConfiguration Configuration { get; set; }
+        public CBSSolutionHandler SolutionHandler { get; set; }
 
         public string FilePath { get; set; } = "";
 
@@ -67,6 +68,7 @@ namespace Aviator.Core.EditorData.Documents
             IsSelected = _isSelected;
             FileHash = hash;
             Configuration = new(FilePath);
+            SolutionHandler = new("name", "path"); // TODO: Générer un nom de solution (dans les paramètres de projet) et trouver le bon chemin de fichier
         }
 
         public virtual void OnOpen()
@@ -101,7 +103,7 @@ namespace Aviator.Core.EditorData.Documents
             {
                 SaveFileDialog saveFileDialog = new()
                 {
-                    Filter = "Aviator Project (*.avtrproj)|*.avtrproj|Aviator File (*.avtr)|*.avtr",
+                    Filter = "Aviator Project (*.avtr)|*.avtr",
                     InitialDirectory = appSettings.LastUsedPath,
                     FileName = saveAs ? "" : RawFileName
                 };

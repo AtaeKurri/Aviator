@@ -46,29 +46,5 @@ namespace Aviator.Properties {
                 this["LastUsedPath"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int CompileTarget {
-            get {
-                return ((int)(this["CompileTarget"]));
-            }
-            set {
-                this["CompileTarget"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string LSTGExecutablePath {
-            get {
-                return ((string)(this["LSTGExecutablePath"]));
-            }
-            set {
-                this["LSTGExecutablePath"] = value;
-            }
-        }
     }
 }

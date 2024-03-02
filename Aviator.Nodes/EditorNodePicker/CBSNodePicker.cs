@@ -1,19 +1,15 @@
-﻿using Aviator.Nodes.EditorNodePicker;
+﻿using Aviator.Nodes.EditorNodes.Chambersite;
 using Aviator.Nodes.EditorNodes.Common;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aviator.Nodes.NodeToolbox
+namespace Aviator.Nodes.EditorNodePicker
 {
-    public class NodePicker : AbstractNodePicker
+    public class CBSNodePicker(IMainWindow parentWindow) : AbstractNodePicker(parentWindow)
     {
-        public NodePicker(IMainWindow parentWindow)
-            : base(parentWindow) { }
-
         public override void Initialize()
         {
             NodePickerTab generalTab = new("General");
@@ -28,6 +24,7 @@ namespace Aviator.Nodes.NodeToolbox
             #region General
 
             generalTab.AddNode(new NodePickerItem("folder", "folder", "Base Folder", new AddNode(AddNode_Folder)));
+            generalTab.AddNode(new NodePickerItem("namespace", "namespace", "Define Namespace", new AddNode(AddNode_Namespace)));
 
             #endregion
             #region Data
@@ -51,6 +48,11 @@ namespace Aviator.Nodes.NodeToolbox
         private void AddNode_Folder()
         {
             ParentWindow.Insert(new Folder(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_Namespace()
+        {
+            ParentWindow.Insert(new NamespaceDefinition(ParentWindow.CurrentWorkspace));
         }
 
         #endregion

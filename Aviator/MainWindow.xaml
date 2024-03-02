@@ -13,12 +13,13 @@
         Height="680"
         Width="800"
         WindowState="Maximized"
-        Closing="window_Closing">
+        Closing="Window_Closing">
     <!--Style="{DynamicResource CustomWindowStyle}">-->
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="NewCommand_CanExecute" Executed="NewCommand_Executed"/>
         <CommandBinding Command="Open" CanExecute="OpenCommand_CanExecute" Executed="OpenCommand_Executed"/>
         <CommandBinding Command="Save" CanExecute="SaveCommand_CanExecute" Executed="SaveCommand_Executed"/>
+        <CommandBinding Command="SaveAs" CanExecute="SaveAsCommand_CanExecute" Executed="SaveAsCommand_Executed"/>
 
         <CommandBinding Command="Undo" CanExecute="UndoCommand_CanExecute" Executed="UndoCommand_Executed"/>
         <CommandBinding Command="Redo" CanExecute="RedoCommand_CanExecute" Executed="RedoCommand_Executed"/>
@@ -364,15 +365,15 @@
                         <fa:FontAwesome Icon="Hourglass" FontSize="25"/>
                     </Button>
                     <Separator/>
-                    <RadioButton ToolTip="Insert Before"
+                    <RadioButton ToolTip="Insert Before" Command="cmds:EditorCommands.ToBeforeState"
                                  IsChecked="{Binding IsBeforeState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowUp" FontSize="25"/>
                     </RadioButton>
-                    <RadioButton ToolTip="Insert After"
+                    <RadioButton ToolTip="Insert After" Command="cmds:EditorCommands.ToAfterState"
                                  IsChecked="{Binding IsAfterState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowDown" FontSize="25"/>
                     </RadioButton>
-                    <RadioButton ToolTip="Insert Child"
+                    <RadioButton ToolTip="Insert Child" Command="cmds:EditorCommands.ToChildState"
                                  IsChecked="{Binding IsChildState, ElementName=window, Mode=OneWay}">
                         <fa:FontAwesome Icon="ArrowRight" FontSize="25"/>
                     </RadioButton>
@@ -380,7 +381,8 @@
             </ToolBarTray>
         </Border>
         <Border DockPanel.Dock="Top">
-            <TabControl ContentTemplateSelector="{StaticResource NodePickerTemplateSelector}">
+            <TabControl ContentTemplateSelector="{StaticResource NodePickerTemplateSelector}"
+                        x:Name="NodePickerTabControl">
                 <TabControl.Resources>
                     <CollectionViewSource x:Key="NodePickerBox" Source="{Binding NodePickerBox, ElementName=window}"/>
                 </TabControl.Resources>
@@ -501,7 +503,7 @@
                                         <ColumnDefinition Width="25"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding FileName}" Grid.Column="0"/>
-                                    <Button Content="X" Grid.Column="1" Margin="4,1,3,2"
+                                    <Button Content="X" Grid.Column="1" Margin="4,1,3,2" Click="CloseDocument_Click"
                                             Background="{x:Null}" BorderBrush="{x:Null}" Tag="{Binding FileHash}"/>
                                 </Grid>
                             </DataTemplate>

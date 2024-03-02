@@ -14,4 +14,8 @@
     <ProjectReference Include="..\Aviator.Core\Aviator.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="EditorNodes\LuaSTG\" />
+  </ItemGroup>
+
 </Project>

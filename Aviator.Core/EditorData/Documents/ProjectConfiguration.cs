@@ -39,6 +39,17 @@ namespace Aviator.Core.EditorData.Documents
             }
         }
 
+        private string projectInternalName;
+        public string ProjectInternalName
+        {
+            get => projectInternalName;
+            set
+            {
+                projectInternalName = value;
+                RaisePropertyChanged("ProjectInternalName");
+            }
+        }
+
         #endregion
 
         public ProjectConfiguration(string pathToConfiguration)
@@ -57,6 +68,7 @@ namespace Aviator.Core.EditorData.Documents
             data.Sections.AddSection("Cfg");
             data["Cfg"].AddKey("LuaSTGExecutablePath", "");
             data["Cfg"].AddKey("CompileTarget", $"{(int)ECompileTarget.LuaSTG}");
+            data["Cfg"].AddKey("ProjectInternalName", "");
 
             parser.WriteFile(PathToConfiguration, data);
         }
@@ -68,6 +80,7 @@ namespace Aviator.Core.EditorData.Documents
 
             data["Cfg"]["LuaSTGExecutablePath"] = LuaSTGExecutablePath;
             data["Cfg"]["CompileTarget"] = $"{(int)CompileTarget}";
+            data["Cfg"]["ProjectInternalName"] = ProjectInternalName;
 
             parser.WriteFile(PathToConfiguration, data);
         }
@@ -79,6 +92,7 @@ namespace Aviator.Core.EditorData.Documents
 
             LuaSTGExecutablePath = data["Cfg"]["LuaSTGExecutablePath"];
             CompileTarget = (ECompileTarget)int.Parse(data["Cfg"]["CompileTarget"]);
+            ProjectInternalName = data["Cfg"]["ProjectInternalName"];
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

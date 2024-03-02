@@ -11,6 +11,7 @@ namespace Aviator.Nodes
     public interface IMainWindow
     {
         void Insert(TreeNode node, bool doInvoke = true);
-        Document CurrentWorkspace { get; }
+        public static Document CurrentWorkspaceStatic { get; }
+        public Document CurrentWorkspace { get; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Aviator.Core.EditorData.Nodes.Attributes;
+﻿using Aviator.Core.EditorData.Documents;
+using Aviator.Core.EditorData.Nodes.Attributes;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -24,9 +25,16 @@ namespace Aviator.Windows
     {
         private App main = Application.Current as App;
 
+        private MainWindow parentWindow;
+
+        public bool IsProjectLoaded => parentWindow.CurrentWorkspace != null;
+
         public Array CompileTargetArray
         {
-            get => Enum.GetValues(typeof(ECompileTarget));
+            get => Enum.GetValues(typeof(ECompileTarget))
+                .OfType<ECompileTarget>()
+                .Where(m => (int)m == 0 || (int)m == 1)
+                .ToArray();
         }
 
         #region VirtualSettingsProperties
@@ -53,30 +61,47 @@ namespace Aviator.Windows
             }
         }
 
+        private string projectInternalName;
+        public string ProjectInternalName
+        {
+            get => projectInternalName;
+            set
+            {
+                projectInternalName = value;
+                RaisePropertyChanged("ProjectInternalName");
+            }
+        }
+
         #endregion
         #region VirtualSettings
 
         public ECompileTarget CompileTargetVirtual
         {
-            get => main.CompileTarget;
-            set => main.CompileTarget = value;
+            get => parentWindow.CurrentWorkspace.Configuration.CompileTarget;
+            set => parentWindow.CurrentWorkspace.Configuration.CompileTarget = value;
         }
         public string LuaSTGExecPathVirtual
         {
-            get => main.LSTGExecutablePath;
-            set => main.LSTGExecutablePath = value;
+            get => parentWindow.CurrentWorkspace.Configuration.LuaSTGExecutablePath;
+            set => parentWindow.CurrentWorkspace.Configuration.LuaSTGExecutablePath = value;
+        }
+        public string ProjectInternalNameVirtual
+        {
+            get => parentWindow.CurrentWorkspace.Configuration.ProjectInternalName;
+            set => parentWindow.CurrentWorkspace.Configuration.ProjectInternalName = value.Replace(" ", "");
         }
 
         #endregion
 
-        public SettingsWindow()
+        public SettingsWindow(MainWindow mainWindow)
         {
+            parentWindow = mainWindow;
             GetSettings();
             InitializeComponent();
         }
 
-        public SettingsWindow(int tabIndex)
-            : this()
+        public SettingsWindow(MainWindow mainWindow, int tabIndex)
+            : this(mainWindow)
         {
             switch (tabIndex)
             {
@@ -99,15 +124,27 @@ namespace Aviator.Windows
 
         private void ApplySettings()
         {
-            CompileTargetVirtual = CompileTarget;
-            LuaSTGExecPathVirtual = LuaSTGExecPath;
+            if (IsProjectLoaded)
+            {
+                CompileTargetVirtual = CompileTarget;
+                LuaSTGExecPathVirtual = LuaSTGExecPath;
+                ProjectInternalNameVirtual = ProjectInternalName;
+
+                parentWindow.CurrentWorkspace.Configuration.WriteConfiguration();
+                parentWindow.ResetNodePickers();
+            }
+
             Properties.Settings.Default.Save();
         }
 
         private void GetSettings()
         {
-            CompileTarget = CompileTargetVirtual;
-            LuaSTGExecPath = LuaSTGExecPathVirtual;
+            if (IsProjectLoaded)
+            {
+                CompileTarget = CompileTargetVirtual;
+                LuaSTGExecPath = LuaSTGExecPathVirtual;
+                ProjectInternalName = ProjectInternalNameVirtual;
+            }
         }
 
         #endregion
@@ -130,6 +167,7 @@ namespace Aviator.Windows
         private void Ok_Click(object sender, RoutedEventArgs e)
         {
             ApplySettings();
+            GetSettings();
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

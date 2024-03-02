@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Aviator.Nodes.EditorNodePicker
 {
-    public class NodePickerTab
+    public class NodePickerTab : IEnumerable<NodePickerItem>
     {
         public NodePickerTab(string header)
         {
@@ -20,6 +21,16 @@ namespace Aviator.Nodes.EditorNodePicker
         public void AddNode(NodePickerItem item)
         {
             Items.Add(item);
+        }
+
+        public IEnumerator<NodePickerItem> GetEnumerator()
+        {
+            return Items.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

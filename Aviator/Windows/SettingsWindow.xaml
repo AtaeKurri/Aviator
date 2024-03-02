@@ -20,7 +20,10 @@
 
             </TabItem>
             <TabItem x:Name="CompileTab" Header="Compiler">
-                <Grid>
+                
+            </TabItem>
+            <TabItem x:Name="ProjectTab" Header="Project Settings">
+                <Grid IsEnabled="{Binding IsProjectLoaded, ElementName=window}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="40*"/>
                         <ColumnDefinition Width="121*"/>
@@ -35,15 +38,18 @@
                     <Label Content="LuaSTG Executable Path" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
                     <TextBox HorizontalAlignment="Left" Height="26" Margin="10,41,0,0" VerticalAlignment="Top"
                              Width="470" Grid.Column="2" TextWrapping="Wrap"
-                             Text="{Binding LuaSTGExecPath, ElementName=window}"/>
+                             Text="{Binding LuaSTGExecPath, ElementName=window}"
+                             VerticalContentAlignment="Center"/>
                     <Button Content="..." HorizontalAlignment="Left" VerticalAlignment="Top"
                             Height="26" Width="26" Grid.Column="2"
                             Margin="485,41,0,0"
                             Click="LuaSTGExecPath_Clicked"/>
+                    <Label Content="Project Internal Name" HorizontalAlignment="Left" Margin="10,72,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <TextBox HorizontalAlignment="Left" Height="26" Margin="10,72,0,0" VerticalAlignment="Top"
+                             Width="470" Grid.Column="2" TextWrapping="Wrap"
+                             Text="{Binding ProjectInternalName, ElementName=window}"
+                             VerticalContentAlignment="Center"/>
                 </Grid>
-            </TabItem>
-            <TabItem x:Name="ProjectTab" Header="Project Settings">
-
             </TabItem>
         </TabControl>
     </DockPanel>

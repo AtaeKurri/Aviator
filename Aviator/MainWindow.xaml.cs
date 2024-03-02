@@ -15,13 +15,14 @@ using Aviator.Windows;
 using Newtonsoft.Json;
 using Aviator.Core.EditorData.Nodes;
 using Aviator.Core;
-using Aviator.Nodes.NodeToolbox;
 using Aviator.Nodes;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using Aviator.Core.EditorData.EditorTraces;
 using Aviator.Commands;
 using Aviator.Core.EditorData.Nodes.Attributes;
+using Aviator.Nodes.EditorNodePicker;
+using Aviator.Core.EditorData.Commands;
 
 namespace Aviator
 {
@@ -38,7 +39,16 @@ namespace Aviator
     public partial class MainWindow : Window, IMainWindow, INotifyPropertyChanged
     {
         public DocumentCollection Documents { get; } = [];
-        public NodePicker NodePickerBox { get; set; }
+        private AbstractNodePicker nodePickerBox = null;
+        public AbstractNodePicker NodePickerBox
+        {
+            get => nodePickerBox;
+            set
+            {
+                nodePickerBox = value;
+                RaisePropertyChanged("NodePickerBox");
+            }
+        }
 
         private string debugLog = "";
 
@@ -88,7 +98,8 @@ namespace Aviator
 
         public MainWindow()
         {
-            NodePickerBox = new NodePicker(this);
+            //NodePickerBox = new CBSNodePicker(this);
+            NodePickerBox = null;
             EditorCommands cmds = new();
             InitializeComponent();
             WorkspacesTab.ItemsSource = Documents;
@@ -192,6 +203,11 @@ namespace Aviator
             return false;
         }
 
+        /// <summary>
+        /// Open and puts a document in memory.
+        /// </summary>
+        /// <param name="name">The name of the document.</param>
+        /// <param name="path">The path to the file.</param>
         public async void OpenDocumentFromPath(string name, string path)
         {
             try
@@ -208,6 +224,11 @@ namespace Aviator
             }
         }
 
+        /// <summary>
+        /// Clone a template and create a document out of it.
+        /// </summary>
+        /// <param name="name">The name of the document.</param>
+        /// <param name="path">The path to the file.</param>
         public async void CloneTemplate(string name, string path)
         {
             try
@@ -225,25 +246,51 @@ namespace Aviator
             }
         }
 
+        /// <summary>
+        /// Saves the active document.
+        /// </summary>
+        /// <returns>True if successful; otherwise, false.</returns>
         private bool SaveActiveDocument() => SaveDocument(CurrentWorkspace);
 
+        /// <summary>
+        /// Saves the active document as a new file.
+        /// </summary>
+        /// <returns>True if successful; otherwise, false.</returns>
+        private bool SaveActiveDocumentAs() => SaveDocumentAs(CurrentWorkspace);
+
+        /// <summary>
+        /// Saves the specified document.
+        /// </summary>
+        /// <param name="document">The document to save.</param>
+        /// <returns>True if successful; otherwise, false.</returns>
         private bool SaveDocument(Document document)
         {
             NodePropertiesData.CommitEdit();
             return document.Save((Application.Current as App));
         }
 
+        /// <summary>
+        /// Saves the specified document as a new file.
+        /// </summary>
+        /// <param name="document">The document to save.</param>
+        /// <returns>True if successful; otherwise, false.</returns>
         private bool SaveDocumentAs(Document document)
         {
             NodePropertiesData.CommitEdit();
             return document.Save((Application.Current as App), true);
         }
 
+        /// <summary>
+        /// Undoes the last action.
+        /// </summary>
         private void Undo()
         {
             CurrentWorkspace.Undo();
         }
 
+        /// <summary>
+        /// Redo the last undone action.
+        /// </summary>
         private void Redo()
         {
             CurrentWorkspace.Redo();
@@ -254,7 +301,87 @@ namespace Aviator
 
         public void Insert(TreeNode node, bool doInvoke = true)
         {
-            throw new NotImplementedException();
+            try
+            {
+                if (selectedNode == null) return;
+                TreeNode oldSelection = selectedNode;
+                Command cmd = null;
+                switch (InsertState)
+                {
+                    case EInsertState.Before:
+                        cmd = new InsertBeforeCommand(selectedNode, node);
+                        break;
+                    case EInsertState.Child:
+                        cmd = new InsertChildCommand(selectedNode, node);
+                        break;
+                    case EInsertState.After:
+                        cmd = new InsertAfterCommand(selectedNode, node);
+                        break;
+                }
+                if (!selectedNode.ValidateChild(selectedNode, node))
+                    return;
+                if (CurrentWorkspace.AddAndExecuteCommand(cmd))
+                {
+                    RevealNode(node);
+                    if (doInvoke)
+                    {
+                        node.CheckTrace(null, new PropertyChangedEventArgs(""));
+                        CreateInvoke(node);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.ToString());
+            }
+        }
+
+        public void RevealNode(TreeNode node)
+        {
+            if (node == null)
+                return;
+            TreeNode temp = node.Parent;
+            node.ParentWorkspace.IsSelected = true;
+            node.ParentWorkspace.TreeNodes[0].ClearChildSelection();
+            Stack<TreeNode> stack = [];
+            while (temp != null)
+            {
+                stack.Push(temp);
+                temp = temp.Parent;
+            }
+            while (stack.Count > 0)
+                stack.Pop().IsExpanded = true;
+            node.IsSelected = true;
+        }
+
+        public void CreateInvoke(TreeNode node)
+        {
+            
+        }
+
+        public void ResetNodePickers()
+        {
+            if (CurrentWorkspace != null)
+            {
+                switch (CurrentWorkspace.Configuration.CompileTarget)
+                {
+                    case ECompileTarget.LuaSTG:
+                        NodePickerBox = new LuaNodePicker(this);
+                        break;
+                    case ECompileTarget.Chambersite:
+                        NodePickerBox = new CBSNodePicker(this);
+                        break;
+                    default:
+                        NodePickerBox = null;
+                        break;
+                }
+                try { NodePickerTabControl.SelectedItem = NodePickerTabControl.Items[0]; }
+                catch { }
+            }
+            else
+            {
+                NodePickerBox = null;
+            }
         }
 
         #endregion
@@ -262,7 +389,10 @@ namespace Aviator
 
         private void ButtonAddNode_Click(object sender, RoutedEventArgs e)
         {
-
+            string tag = (sender as Button)?.Tag?.ToString();
+            if (string.IsNullOrEmpty(tag))
+                return;
+            NodePickerBox.NodeFuncs[tag]();
         }
 
         private void RaiseInsertStateChanged()
@@ -285,6 +415,30 @@ namespace Aviator
                 DataGrid grid = (DataGrid)sender;
                 if (!datacell.IsReadOnly) grid.BeginEdit(e);
             }
+        }
+
+        private void CloseDocument_Click(object sender, RoutedEventArgs e)
+        {
+            NodePropertiesData.CommitEdit();
+            Button button = sender as Button;
+            int buttonHash = Convert.ToInt32(button.Tag?.ToString());
+            Document toRemove = Documents.First(doc => doc.FileHash == buttonHash);
+            if (toRemove != null)
+                CloseFile(toRemove);
+        }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            NodePropertiesData.CommitEdit();
+            while (Documents.Count > 0)
+            {
+                if (!CloseFile(Documents[0]))
+                {
+                    e.Cancel = true;
+                    break;
+                }
+            }
+            if (!e.Cancel) Application.Current.Shutdown();
         }
 
         #endregion
@@ -313,10 +467,26 @@ namespace Aviator
             }
         }
 
+        private void SaveAsCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = CurrentWorkspace != null;
+        }
+
         private void RunProjectCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            if ((Application.Current as App).CompileTarget == ECompileTarget.LuaSTG)
-                e.CanExecute = CurrentWorkspace != null && !string.IsNullOrEmpty((Application.Current as App).LSTGExecutablePath);
+            if (CurrentWorkspace == null)
+            {
+                e.CanExecute = false;
+            }
+            else
+            {
+                if (CurrentWorkspace.Configuration.CompileTarget == ECompileTarget.LuaSTG)
+                    e.CanExecute = CurrentWorkspace != null && !string.IsNullOrEmpty(CurrentWorkspace.Configuration.LuaSTGExecutablePath);
+                else
+                {
+                    e.CanExecute = CurrentWorkspace != null && !string.IsNullOrEmpty(CurrentWorkspace.Configuration.ProjectInternalName);
+                }
+            }
         }
 
         private void UndoCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -350,6 +520,11 @@ namespace Aviator
             SaveActiveDocument();
         }
 
+        private void SaveAsCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            SaveActiveDocumentAs();
+        }
+
         private void UndoCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             Undo();
@@ -369,9 +544,9 @@ namespace Aviator
         private void OpenSettingsCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             if (int.TryParse(e.Parameter?.ToString(), out int tabIndex))
-                new SettingsWindow(tabIndex).ShowDialog();
+                new SettingsWindow(this, tabIndex).ShowDialog();
             else
-                new SettingsWindow().ShowDialog();
+                new SettingsWindow(this).ShowDialog();
         }
 
         private void RunProjectCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -383,6 +558,7 @@ namespace Aviator
         {
             Workspace = sender as TreeView;
             SelectedNode = Workspace.SelectedItem as TreeNode;
+            ResetNodePickers();
             if (selectedNode != null)
                 NodePropertiesData.ItemsSource = selectedNode.attributes;
         }
@@ -418,20 +594,6 @@ namespace Aviator
         protected void RaisePropertyChanged(string propName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
-        }
-
-        private void window_Closing(object sender, CancelEventArgs e)
-        {
-            NodePropertiesData.CommitEdit();
-            while (Documents.Count > 0)
-            {
-                if (!CloseFile(Documents[0]))
-                {
-                    e.Cancel = true;
-                    break;
-                }
-            }
-            if (!e.Cancel) Application.Current.Shutdown();
         }
     }
 }

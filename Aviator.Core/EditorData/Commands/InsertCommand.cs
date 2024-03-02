@@ -9,13 +9,13 @@ namespace Aviator.Core.EditorData.Commands
 {
     public abstract class InsertCommand : Command
     {
-        protected TreeNode source;
-        protected TreeNode toInsert;
+        protected TreeNode Source;
+        protected TreeNode ToInsert;
 
         public InsertCommand(TreeNode source, TreeNode toInsert)
         {
-            this.source = source;
-            this.toInsert = toInsert;
+            this.Source = source;
+            this.ToInsert = toInsert;
         }
     }
 }
