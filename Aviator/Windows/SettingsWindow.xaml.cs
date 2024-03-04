@@ -37,6 +37,25 @@ namespace Aviator.Windows
                 .ToArray();
         }
 
+        public Array ThemeArray
+        {
+            get => new List<string>() { "DarkGreyTheme", "DeepDark", "GreyTheme", "LightTheme", "RedBlackTheme", "SoftDark" }.ToArray();
+        }
+
+        private string currentTheme;
+        public string CurrentTheme
+        {
+            get => currentTheme;
+            set
+            {
+                currentTheme = value;
+                RaisePropertyChanged("CurrentTheme");
+            }
+        }
+
+        public bool IsLuaTarget => CompileTarget == ECompileTarget.LuaSTG;
+        public bool IsCBSTarget => CompileTarget == ECompileTarget.Chambersite;
+
         #region VirtualSettingsProperties
 
         private ECompileTarget compileTarget;
@@ -72,6 +91,28 @@ namespace Aviator.Windows
             }
         }
 
+        private string cBSOutputPath;
+        public string CBSOutputPath
+        {
+            get => cBSOutputPath;
+            set
+            {
+                cBSOutputPath = value;
+                RaisePropertyChanged("CBSOutputPath");
+            }
+        }
+
+        private string modVersion;
+        public string ModVersion
+        {
+            get => modVersion;
+            set
+            {
+                modVersion = value;
+                RaisePropertyChanged("ModVersion");
+            }
+        }
+
         #endregion
         #region VirtualSettings
 
@@ -89,6 +130,17 @@ namespace Aviator.Windows
         {
             get => parentWindow.CurrentWorkspace.Configuration.ProjectInternalName;
             set => parentWindow.CurrentWorkspace.Configuration.ProjectInternalName = value.Replace(" ", "");
+        }
+        public string CBSOutputPathVirtual
+        {
+            get => parentWindow.CurrentWorkspace.Configuration.CBSOutputPath;
+            set => parentWindow.CurrentWorkspace.Configuration.CBSOutputPath = value;
+        }
+
+        public string ModVersionVirtual
+        {
+            get => parentWindow.CurrentWorkspace.Configuration.ModVersion;
+            set => parentWindow.CurrentWorkspace.Configuration.ModVersion = value;
         }
 
         #endregion
@@ -129,12 +181,18 @@ namespace Aviator.Windows
                 CompileTargetVirtual = CompileTarget;
                 LuaSTGExecPathVirtual = LuaSTGExecPath;
                 ProjectInternalNameVirtual = ProjectInternalName;
+                CBSOutputPathVirtual = CBSOutputPath;
+                ModVersionVirtual = ModVersion;
 
                 parentWindow.CurrentWorkspace.Configuration.WriteConfiguration();
                 parentWindow.ResetNodePickers();
             }
 
+            main.CurrentTheme = CurrentTheme;
+
             Properties.Settings.Default.Save();
+            parentWindow.CurrentWorkspace?.RaisePropertyChanged("Traces");
+            parentWindow.CurrentWorkspace?.TreeNodes[0].RaisePropertyChanged("DisplayString");
         }
 
         private void GetSettings()
@@ -144,7 +202,11 @@ namespace Aviator.Windows
                 CompileTarget = CompileTargetVirtual;
                 LuaSTGExecPath = LuaSTGExecPathVirtual;
                 ProjectInternalName = ProjectInternalNameVirtual;
+                CBSOutputPath = CBSOutputPathVirtual;
+                ModVersion = ModVersionVirtual;
             }
+
+            CurrentTheme = main.CurrentTheme;
         }
 
         #endregion
@@ -184,6 +246,15 @@ namespace Aviator.Windows
             if (openFileDialog.ShowDialog() == true)
             {
                 LuaSTGExecPath = openFileDialog.FileName;
+            }
+        }
+
+        private void CBSOutputPath_Clicked(object sender, RoutedEventArgs e)
+        {
+            OpenFolderDialog openFolderDialog = new();
+            if (openFolderDialog.ShowDialog() == true)
+            {
+                CBSOutputPath = openFolderDialog.FolderName;
             }
         }
 

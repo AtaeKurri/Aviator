@@ -8,12 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
     <PackageReference Include="ini-parser" Version="2.5.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="EditorData\EditorTraces\Traces\" />
   </ItemGroup>
 
 </Project>

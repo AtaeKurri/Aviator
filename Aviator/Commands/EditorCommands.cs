@@ -25,6 +25,9 @@ namespace Aviator.Commands
         public static RoutedUICommand NodeAttrMore { get; set; }
             = new RoutedUICommand("Adjust Node Attributes", "NodeAttrMore", typeof(EditorCommands));
 
+        public static RoutedUICommand ViewCode { get; set; }
+            = new RoutedUICommand("Preview Code", "ViewCode", typeof(EditorCommands), CreateGesture(new KeyGesture(Key.F2)));
+
         #endregion
 
         public static InputGestureCollection CreateGesture(KeyGesture gesture)

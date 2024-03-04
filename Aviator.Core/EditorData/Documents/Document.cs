@@ -11,13 +11,20 @@ using System.Windows;
 using Aviator.Core.EditorData.Commands;
 using Aviator.Core.EditorData.EditorTraces;
 using System.Xml.Linq;
+using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
+using Aviator.Core.EditorData.EditorTraces.Traces;
 
 namespace Aviator.Core.EditorData.Documents
 {
-    public class Document : INotifyPropertyChanged
+    public class Document : INotifyPropertyChanged, ITraceThrowable
     {
+        #region Properties
+
         public ProjectConfiguration Configuration { get; set; }
         public CBSSolutionHandler SolutionHandler { get; set; }
+
+        public ObservableCollection<EditorTrace> Traces { get; private set; } = [];
 
         public string FilePath { get; set; } = "";
 
@@ -60,7 +67,9 @@ namespace Aviator.Core.EditorData.Documents
         public Command? SavedCommand = null;
 
         public WorkTree TreeNodes { get; set; } = [];
-        
+
+        #endregion
+
         public Document(int hash, bool suppressMessage, string name, string path, bool _isSelected)
         {
             FileName = name;
@@ -68,7 +77,13 @@ namespace Aviator.Core.EditorData.Documents
             IsSelected = _isSelected;
             FileHash = hash;
             Configuration = new(FilePath);
-            SolutionHandler = new("name", "path"); // TODO: Générer un nom de solution (dans les paramètres de projet) et trouver le bon chemin de fichier
+            SolutionHandler = new(Configuration.ProjectInternalName, "path"); // TODO: Générer un nom de solution (dans les paramètres de projet) et trouver le bon chemin de fichier
+            PropertyChanged += new PropertyChangedEventHandler(CheckTrace);
+        }
+
+        public override string ToString()
+        {
+            return RawFileName;
         }
 
         public virtual void OnOpen()
@@ -83,18 +98,15 @@ namespace Aviator.Core.EditorData.Documents
 
         public virtual void OnClosing()
         {
-            RevertUntilSaved();
-            var toRemove = new List<EditorTrace>();
-            foreach (EditorTrace trace in EditorTraceContainer.Traces)
+            for (int i = 0; i < EditorTraceContainer.Traces.Count; i++)
             {
+                EditorTrace trace = EditorTraceContainer.Traces[i];
                 if (trace.Source == this)
-                {
-                    toRemove.Add(trace);
-                }
+                    EditorTraceContainer.Traces.Remove(trace);
             }
-            foreach (EditorTrace trace in toRemove)
-                EditorTraceContainer.Traces.Remove(trace);
         }
+
+        #region IO
 
         public bool Save(IAppSettings appSettings, bool saveAs = false)
         {
@@ -117,7 +129,7 @@ namespace Aviator.Core.EditorData.Documents
                 FileName = path[(path.LastIndexOf('\\') + 1)..];
             }
             else path = FilePath;
-            
+            PushSavedCommand();
             try
             {
                 using (StreamWriter sw = new(path))
@@ -186,6 +198,7 @@ namespace Aviator.Core.EditorData.Documents
             return root;
         }
 
+        #endregion
         #region Commands
 
         public void Undo()
@@ -222,8 +235,39 @@ namespace Aviator.Core.EditorData.Documents
         }
 
         #endregion
+        #region Traces
 
-        private void RevertUntilSaved()
+        public List<EditorTrace> GetTraces()
+        {
+            return [];
+        }
+
+        public void CheckTrace(object sender, PropertyChangedEventArgs e)
+        {
+            List<EditorTrace> traces = GetTraces();
+
+            // Check for Compile Target mismatch.
+            if (!(TreeNodes[0].MetaData.CompileTarget == Nodes.Attributes.ECompileTarget.All || Configuration.CompileTarget == Nodes.Attributes.ECompileTarget.All))
+            {
+                if (TreeNodes[0].MetaData.CompileTarget != Configuration.CompileTarget)
+                {
+                    traces.Add(new WrongCompileTargetTrace(this, TreeNodes[0].MetaData.CompileTarget, Configuration.CompileTarget));
+                }
+            }
+            if (Configuration.CompileTarget == Nodes.Attributes.ECompileTarget.LuaSTG && string.IsNullOrEmpty(Configuration.LuaSTGExecutablePath))
+                traces.Add(new LuaSTGPathNotSetTrace(this));
+            else if (Configuration.CompileTarget == Nodes.Attributes.ECompileTarget.Chambersite && string.IsNullOrEmpty(Configuration.CBSOutputPath))
+                traces.Add(new CBSPathNotSetTrace(this));
+
+            Traces.Clear();
+            foreach (EditorTrace trace in traces)
+                Traces.Add(trace);
+            EditorTraceContainer.UpdateTraces(this);
+        }
+
+        #endregion
+
+        public void RevertUntilSaved()
         {
             if (SavedCommand == null || CommandStack.Contains(SavedCommand))
             {

@@ -23,7 +23,12 @@ namespace Aviator.Nodes.EditorNodePicker
 
             #region General
 
-            generalTab.AddNode(new NodePickerItem("folder", "folder", "Base Folder", new AddNode(AddNode_Folder)));
+            generalTab.AddNode(new NodePickerItem("folder", "Folder.png", "Folder", new AddNode(AddNode_Folder)));
+            generalTab.AddNode(new NodePickerItem("folderred", "FolderRed.png", "Red Folder", new AddNode(AddNode_FolderRed)));
+            generalTab.AddNode(new NodePickerItem("foldergreen", "FolderGreen.png", "Green Folder", new AddNode(AddNode_FolderGreen)));
+            generalTab.AddNode(new NodePickerItem("folderblue", "FolderBlue.png", "Blue Folder", new AddNode(AddNode_FolderBlue)));
+            generalTab.AddNode(new NodePickerItem("code", "Code.png", "Code", new AddNode(AddNode_Code)));
+            generalTab.AddNode(new NodePickerItem("comment", "Comment.png", "Comment", new AddNode(AddNode_Comment)));
 
             #endregion
             #region Data
@@ -42,11 +47,36 @@ namespace Aviator.Nodes.EditorNodePicker
             NodePickerTabs.Add(renderingTab);
         }
 
-        #region AddNodes Methods
+        #region General
 
         private void AddNode_Folder()
         {
             ParentWindow.Insert(new Folder(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_FolderRed()
+        {
+            ParentWindow.Insert(new FolderRed(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_FolderGreen()
+        {
+            ParentWindow.Insert(new FolderGreen(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_FolderBlue()
+        {
+            ParentWindow.Insert(new FolderBlue(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_Code()
+        {
+            ParentWindow.Insert(new Code(ParentWindow.CurrentWorkspace));
+        }
+
+        private void AddNode_Comment()
+        {
+            ParentWindow.Insert(new Comment(ParentWindow.CurrentWorkspace));
         }
 
         #endregion

@@ -23,6 +23,9 @@ using Aviator.Commands;
 using Aviator.Core.EditorData.Nodes.Attributes;
 using Aviator.Nodes.EditorNodePicker;
 using Aviator.Core.EditorData.Commands;
+using Aviator.Nodes.EditorNodes.Chambersite;
+using Aviator.Core.EditorData.Windows;
+using Aviator.InputWindows;
 
 namespace Aviator
 {
@@ -77,6 +80,8 @@ namespace Aviator
                 RaisePropertyChanged("DebugLog");
             }
         }
+
+        public TreeNode ClipBoard = null;
 
         private TreeNode selectedNode = null;
         public TreeNode SelectedNode
@@ -216,6 +221,7 @@ namespace Aviator
                 Documents.Add(document);
                 TreeNode root = await Document.CreateNodesFromFile(path, document);
                 document.TreeNodes.Add(root);
+                document.RaisePropertyChanged("Traces");
             }
             catch (JsonException err)
             {
@@ -233,11 +239,15 @@ namespace Aviator
         {
             try
             {
+                if (File.Exists(path)) ;
                 Document newDocument = new(Documents.MaxHash, false, name, path, true);
                 newDocument.FilePath = "";
                 Documents.Add(newDocument);
                 TreeNode tree = await Document.CreateNodesFromFile(path, newDocument);
                 newDocument.TreeNodes.Add(tree);
+                if (newDocument.TreeNodes[0] is RootNamespaceDefinition)
+                    newDocument.Configuration.CompileTarget = ECompileTarget.Chambersite;
+                newDocument.RaisePropertyChanged("Traces");
             }
             catch (JsonException err)
             {
@@ -280,6 +290,31 @@ namespace Aviator
             return document.Save((Application.Current as App), true);
         }
 
+        private void CutNode()
+        {
+            ClipBoard = (TreeNode)selectedNode.Clone();
+            TreeNode prev = selectedNode.GetNearestEdited();
+            CurrentWorkspace.AddAndExecuteCommand(new DeleteCommand(selectedNode));
+            if (prev != null)
+                RevealNode(prev);
+        }
+
+        private void CopyNode()
+        {
+            ClipBoard = (TreeNode)selectedNode.Clone();
+        }
+
+        private void PasteNode()
+        {
+            try
+            {
+                TreeNode node = (TreeNode)ClipBoard.Clone();
+                node.FixParentDocument(CurrentWorkspace);
+                Insert(node, false);
+            }
+            catch { }
+        }
+
         /// <summary>
         /// Undoes the last action.
         /// </summary>
@@ -296,6 +331,42 @@ namespace Aviator
             CurrentWorkspace.Redo();
         }
 
+        private void DeleteNode()
+        {
+            TreeNode prev = selectedNode.GetNearestEdited();
+            CurrentWorkspace.AddAndExecuteCommand(new DeleteCommand(selectedNode));
+            if (prev != null) RevealNode(prev);
+        }
+
+        public bool CheckForErrors()
+        {
+            if (EditorTraceContainer.ContainSeverity(TraceSeverity.Error))
+            {
+                MessageBox.Show("Errors are found within the project. Aborting compiling.",
+                    "Aviator Editor", MessageBoxButton.OK, MessageBoxImage.Error);
+                return true;
+            }
+            return false;
+        }
+
+        private void ViewCode()
+        {
+            try
+            {
+                NodePropertiesData.CommitEdit();
+                if (CheckForErrors()) return;
+                //CurrentWorkspace.GatherCompileInfo(Application.Current as App);
+                string code;
+                if (CurrentWorkspace.Configuration.CompileTarget == ECompileTarget.LuaSTG)
+                    code = string.Concat(selectedNode.ToLua(0));
+                else
+                    code = string.Concat(selectedNode.ToChambersite(0));
+                CodePreviewWindow preview = new(code, CurrentWorkspace.Configuration.CompileTarget);
+                preview.ShowDialog();
+            }
+            catch (Exception e) { MessageBox.Show(e.ToString()); }
+        }
+
         #endregion
         #region TreeNode infos
 
@@ -309,16 +380,22 @@ namespace Aviator
                 switch (InsertState)
                 {
                     case EInsertState.Before:
+                        if (selectedNode.Parent == null || !selectedNode.Parent.ValidateChild(selectedNode, node))
+                            return;
                         cmd = new InsertBeforeCommand(selectedNode, node);
                         break;
                     case EInsertState.Child:
+                        if (!selectedNode.ValidateChild(selectedNode, node))
+                            return;
                         cmd = new InsertChildCommand(selectedNode, node);
                         break;
                     case EInsertState.After:
+                        if (selectedNode.Parent == null || !selectedNode.Parent.ValidateChild(selectedNode, node))
+                            return;
                         cmd = new InsertAfterCommand(selectedNode, node);
                         break;
                 }
-                if (!selectedNode.ValidateChild(selectedNode, node))
+                if (selectedNode.Parent == null && InsertState != EInsertState.Child)
                     return;
                 if (CurrentWorkspace.AddAndExecuteCommand(cmd))
                 {
@@ -405,6 +482,11 @@ namespace Aviator
         private void ComboBox_Loaded(object sender, RoutedEventArgs e)
         {
             ComboBox comboBox = sender as ComboBox;
+            foreach (string s in InputWindowSelector.SelectComboBox(comboBox.Tag?.ToString()))
+            {
+                ComboBoxItem item = new() { Content = s };
+                comboBox.Items.Add(item);
+            }
             comboBox.Focus();
         }
 
@@ -439,6 +521,19 @@ namespace Aviator
                 }
             }
             if (!e.Cancel) Application.Current.Shutdown();
+        }
+
+        private void Workspace_SelectedChanged(object sender, RoutedEventArgs e)
+        {
+            ResetNodePickers();
+        }
+
+        private void TreeNodeItem_SelectedChanged(object sender, RoutedEventArgs e)
+        {
+            Workspace = sender as TreeView;
+            SelectedNode = Workspace.SelectedItem as TreeNode;
+            if (selectedNode != null)
+                NodePropertiesData.ItemsSource = selectedNode.attributes;
         }
 
         #endregion
@@ -503,6 +598,42 @@ namespace Aviator
             else e.CanExecute = false;
         }
 
+        private void DeleteCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            if (SelectedNode != null)
+            {
+                e.CanExecute = !SelectedNode.MetaData.CannotBeDeleted;
+            }
+            else
+            {
+                e.CanExecute = false;
+            }
+        }
+
+        private void ViewCodeCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = selectedNode != null;
+        }
+
+        private void CutCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            if (selectedNode != null)
+            {
+                e.CanExecute = selectedNode.CanLogicallyDelete();
+            }
+            else e.CanExecute = false;
+        }
+
+        private void CopyCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = selectedNode != null;
+        }
+
+        private void PasteCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = selectedNode != null && ClipBoard != null;
+        }
+
         #endregion
 
         private void NewCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -554,15 +685,6 @@ namespace Aviator
             throw new NotImplementedException();
         }
 
-        private void WorkSpaceSelectedChanged(object sender, RoutedEventArgs e)
-        {
-            Workspace = sender as TreeView;
-            SelectedNode = Workspace.SelectedItem as TreeNode;
-            ResetNodePickers();
-            if (selectedNode != null)
-                NodePropertiesData.ItemsSource = selectedNode.attributes;
-        }
-
         private void ToBeforeStateCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             InsertState = EInsertState.Before;
@@ -587,11 +709,36 @@ namespace Aviator
             // Do InputWindow shit.
         }
 
+        private void DeleteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            DeleteNode();
+        }
+
+        private void ViewCodeCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ViewCode();
+        }
+
+        private void CutCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            CutNode();
+        }
+
+        private void CopyCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            CopyNode();
+        }
+
+        private void PasteCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            PasteNode();
+        }
+
         #endregion
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void RaisePropertyChanged(string propName)
+        public void RaisePropertyChanged(string propName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
         }

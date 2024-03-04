@@ -15,12 +15,12 @@ namespace Aviator.Core.EditorData.Commands
         public override void Execute()
         {
             TreeNode parent = Source.Parent;
-            parent.InsertChild(ToInsert, parent.Children.IndexOf(Source));
+            parent?.InsertChild(ToInsert, parent.Children.IndexOf(Source));
         }
 
         public override void Undo()
         {
-            Source.Parent.RemoveChild(ToInsert);
+            Source.Parent?.RemoveChild(ToInsert);
         }
     }
 }

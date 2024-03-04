@@ -18,17 +18,38 @@ namespace Aviator.Core.EditorData.EditorTraces
 
     public abstract class EditorTrace : ICloneable
     {
-        public ITraceThrowable Source { get; private set; }
+        public ITraceThrowable? Source { get; private set; }
         public string SourceName { get; private set; }
         public EditorTrace This => this;
         public string Trace => ToString();
         public TraceSeverity TraceSeverity { get; private set; }
-        public string Icon { get; }
+        public string Icon
+        {
+            get
+            {
+                switch (TraceSeverity)
+                {
+                    case TraceSeverity.Info:
+                        return "/Aviator;component/Images/Info.png";
+                    case TraceSeverity.Warning:
+                        return "/Aviator;component/Images/Warning.png";
+                    default:
+                        return "/Aviator;component/Images/Error.png";
+                }
+            }
+        }
 
         public EditorTrace(TraceSeverity severity, ITraceThrowable source)
         {
             TraceSeverity = severity;
             Source = source;
+            SourceName = source?.ToString();
+        }
+
+        public EditorTrace(TraceSeverity severity, string sourceName)
+            : this(severity, null as ITraceThrowable)
+        {
+            SourceName = sourceName;
         }
 
         public EditorTrace(TraceSeverity severity, ITraceThrowable source, string sourceName)

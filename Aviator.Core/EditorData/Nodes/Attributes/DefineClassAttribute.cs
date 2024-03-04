@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Aviator.Core.EditorData.Nodes.Attributes
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-    public class DefineClassAttribute() : Attribute
+    public sealed class DefineClassAttribute() : Attribute
     {
 
     }

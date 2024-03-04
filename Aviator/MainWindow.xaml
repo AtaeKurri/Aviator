@@ -13,7 +13,8 @@
         Height="680"
         Width="800"
         WindowState="Maximized"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        Style="{StaticResource CustomWindowStyle}">
     <!--Style="{DynamicResource CustomWindowStyle}">-->
     <Window.CommandBindings>
         <CommandBinding Command="New" CanExecute="NewCommand_CanExecute" Executed="NewCommand_Executed"/>
@@ -23,6 +24,10 @@
 
         <CommandBinding Command="Undo" CanExecute="UndoCommand_CanExecute" Executed="UndoCommand_Executed"/>
         <CommandBinding Command="Redo" CanExecute="RedoCommand_CanExecute" Executed="RedoCommand_Executed"/>
+        <CommandBinding Command="Cut" Executed="CutCommandExecuted" CanExecute="CutCommand_CanExecute"/>
+        <CommandBinding Command="Copy" Executed="CopyCommandExecuted" CanExecute="CopyCommand_CanExecute"/>
+        <CommandBinding Command="Paste" Executed="PasteCommandExecuted" CanExecute="PasteCommand_CanExecute"/>
+        <CommandBinding Command="Delete" CanExecute="DeleteCommand_CanExecute" Executed="DeleteCommand_Executed"/>
 
         <CommandBinding Command="{x:Static cmds:EditorCommands.OpenSettings}" Executed="OpenSettingsCommand_Executed"/>
         <CommandBinding Command="{x:Static cmds:EditorCommands.RunProject}" Executed="RunProjectCommand_Executed" CanExecute="RunProjectCommand_CanExecute"/>
@@ -30,6 +35,8 @@
         <CommandBinding Command="{x:Static cmds:EditorCommands.ToBeforeState}" Executed="ToBeforeStateCommand_Executed"/>
         <CommandBinding Command="{x:Static cmds:EditorCommands.ToChildState}" Executed="ToChildStateCommand_Executed"/>
         <CommandBinding Command="{x:Static cmds:EditorCommands.ToAfterState}" Executed="ToAfterStateCommand_Executed"/>
+
+        <CommandBinding Command="{x:Static cmds:EditorCommands.ViewCode}" Executed="ViewCodeCommand_Executed" CanExecute="ViewCodeCommand_CanExecute"/>
     </Window.CommandBindings>
     <Window.Resources>
         <!--#region Templates-->
@@ -41,7 +48,8 @@
         <DataTemplate x:Key="NodePickerButton" DataType="{x:Type ndpkr:NodePickerItem}">
             <Button Tag="{Binding Tag}" Click="ButtonAddNode_Click">
                 <Button.Content>
-                    <fa:FontAwesome Icon="AddressBook" FontSize="24" FontStretch="Expanded"/>
+                    <!--<fa:FontAwesome Icon="AddressBook" FontSize="24" FontStretch="Expanded"/>-->
+                    <Image Source="{Binding Icon}" Stretch="Fill" Width="24" Height="24"/>
                 </Button.Content>
                 <Button.ToolTip>
                     <ToolTip>
@@ -139,7 +147,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="DottedTreeViewItems" TargetType="{x:Type TreeViewItem}">
+        <Style x:Key="DottedTreeViewItems" TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="HorizontalContentAlignment"
                     Value="{Binding Path=HorizontalContentAlignment,
@@ -148,7 +156,7 @@
                     Value="{Binding Path=VerticalContentAlignment,
                 RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
             <Setter Property="Padding" Value="1,0,0,0"/>
-            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
             <Setter Property="FocusVisualStyle" Value="{StaticResource TreeViewItemFocusVisual}"/>
             <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}"/>
             <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}"/>
@@ -240,11 +248,9 @@
                             </MultiTrigger>
                             <Trigger Property="IsSelected"
                                      Value="true">
-                                <Setter TargetName="Bd"
-                                        Property="Background"
-                                        Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
+                                <Setter Property="Background" TargetName="Bd" Value="{DynamicResource TreeViewItem.Selected.Background}"/>
+                                <Setter Property="BorderBrush" TargetName="Bd" Value="{DynamicResource TreeViewItem.Selected.Border}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Deeper}"/>
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
@@ -253,16 +259,13 @@
                                     <Condition Property="IsSelectionActive"
                                                Value="false"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="Bd"
-                                        Property="Background"
-                                        Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+                                <Setter Property="Background" TargetName="Bd" Value="{DynamicResource TreeViewItem.Selected.Inactive.Background}"/>
+                                <Setter Property="BorderBrush" TargetName="Bd" Value="{DynamicResource TreeViewItem.Selected.Inactive.Border}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Disabled}"/>
                             </MultiTrigger>
                             <Trigger Property="IsEnabled"
                                      Value="false">
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Disabled}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -318,6 +321,7 @@
                 <MenuItem Header="_About">
                     <MenuItem Header="_Help"/>
                     <MenuItem Header="_Changelog"/>
+                    <MenuItem Header="_About"/>
                 </MenuItem>
             </Menu>
         </Border>
@@ -405,36 +409,13 @@
                 <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-
             <DataGrid x:Name="NodePropertiesData" Grid.Column="2" Margin="4,10,10,11.2" AutoGenerateColumns="False"
                       CanUserResizeRows="False" CanUserAddRows="False" VerticalScrollBarVisibility="Visible"
                       ItemsSource="{Binding ContentTemplate.VisualTree, ElementName=WorkspacesTab}"
-                      Style="{StaticResource ResourceKey=DataGridStyle}"
                       DataGridCell.Selected="DataGrid_GotFocus">
-                <DataGrid.CellStyle>
-                    <Style TargetType="DataGridCell">
-                        <Setter Property="BorderBrush" Value="White"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="true">
-                                <Setter Property="BorderBrush" Value="White"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.CellStyle>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Attributes" Binding="{Binding Path=AttrName}" IsReadOnly="True">
-                        <DataGridTextColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="Background" Value="#FFDDDDDD"/>
-                                <Setter Property="BorderBrush" Value="#FFDDDDDD"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Foreground" Value="Black"/>
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.CellStyle>
+                        
                     </DataGridTextColumn>
                     <DataGridTemplateColumn Header="Values" Width="100">
                         <DataGridTemplateColumn.CellTemplate>
@@ -453,16 +434,6 @@
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTemplateColumn CanUserResize="False" IsReadOnly="True">
-                        <DataGridTemplateColumn.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Style.Triggers>
-                                    <Trigger Property="IsSelected" Value="true">
-                                        <Setter Property="Background" Value="White"/>
-                                        <Setter Property="BorderBrush" Value="White"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTemplateColumn.CellStyle>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Button Content="..." Width="20" 
@@ -488,9 +459,10 @@
                         <RowDefinition Height="1.2*" MinHeight="50"/>
                     </Grid.RowDefinitions>
                     <TabControl x:Name="WorkspacesTab" Grid.Row="0" Margin="9.8,7.8,1,4.4" Grid.RowSpan="2"
-                                ItemsSource="{Binding UpdateSourceTrigger=PropertyChanged}">
+                                ItemsSource="{Binding UpdateSourceTrigger=PropertyChanged}"
+                                SelectionChanged="Workspace_SelectedChanged">
                         <TabControl.ItemContainerStyle>
-                            <Style TargetType="{x:Type TabItem}">
+                            <Style TargetType="{x:Type TabItem}" BasedOn="{StaticResource {x:Type TabItem}}">
                                 <Setter Property="IsSelected"
                                         Value="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
                             </Style>
@@ -512,11 +484,14 @@
                             <DataTemplate>
                                 <TreeView x:Name="TreeWorkspace" ItemsSource="{Binding TreeNodes}"
                                           VirtualizingPanel.IsVirtualizing="True"
-                                          SelectedItemChanged="WorkSpaceSelectedChanged"
+                                          SelectedItemChanged="TreeNodeItem_SelectedChanged"
                                           ItemContainerStyle="{StaticResource DottedTreeViewItems}">
                                     <TreeView.ItemTemplate>
                                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                             <StackPanel Orientation="Horizontal">
+                                                <Image Source="{Binding MetaData.Icon}"
+                                                       Stretch="Fill" Width="16" Height="16"
+                                                       Margin="0,0,2,2" VerticalAlignment="Top"/>
                                                 <TextBlock Text="{Binding DisplayString}" VerticalAlignment="Center"/>
                                                 <StackPanel.ContextMenu>
                                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -529,6 +504,13 @@
                                                                 <MenuItem Command="Paste"/>
                                                                 <Separator/>
                                                                 <MenuItem Command="Delete"/>
+                                                                <Separator/>
+                                                                <MenuItem Header="_Fold Tree"/>
+                                                                <MenuItem Header="_Unfold Tree"/>
+                                                                <Separator/>
+                                                                <MenuItem Header="_Ban"/>
+                                                                <Separator/>
+                                                                <MenuItem Command="cmds:EditorCommands.ViewCode"/>
                                                             </CompositeCollection>
                                                         </ContextMenu.ItemsSource>
                                                     </ContextMenu>
@@ -543,7 +525,7 @@
                     
                     <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Opacity="0"/>
 
-                    <TabControl Grid.Row="2" Margin="9.6,4,0.6,10">
+                    <TabControl Grid.Row="2" Margin="9.6,4,0.6,10" x:Name="TraceDebugControl">
                         <TabItem x:Name="TraceTab" Header="Traces">
                             <DataGrid x:Name="EditorTraces" VerticalScrollBarVisibility="Visible" AutoGenerateColumns="False"
                                       IsReadOnly="True" CanUserAddRows="False">
@@ -551,18 +533,13 @@
                                     <DataGridTemplateColumn CanUserResize="False">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Image Height="12" Width="12" Stretch="Fill"/>
+                                                <Image Source="{Binding Icon}" Height="12" Width="12" Stretch="Fill"/>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn Width="400" Header="Trace" Binding="{Binding Path=Trace}"/>
                                     <DataGridTextColumn Width="100" Header="Source" Binding="{Binding Path=SourceName}"/>
                                 </DataGrid.Columns>
-                                <DataGrid.ItemContainerStyle>
-                                    <Style TargetType="DataGridRow">
-                                        <Setter Property="Tag" Value="{Binding Path=This}"/>
-                                    </Style>
-                                </DataGrid.ItemContainerStyle>
                             </DataGrid>
                         </TabItem>
                         <TabItem x:Name="DebugTab" Header="Debug Log">

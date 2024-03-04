@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Aviator.Nodes.EditorNodes.Common
 {
-    [CompileTarget(ECompileTarget.All)]
+    [CompileTarget(ECompileTarget.All), NodeIcon("Folder.png"), IsFolder]
     public class Folder : TreeNode
     {
         [JsonConstructor]
@@ -32,16 +32,6 @@ namespace Aviator.Nodes.EditorNodes.Common
         public override string ToString()
         {
             return Name;
-        }
-
-        public override IEnumerable<string> ToLua(int spacing)
-        {
-            yield return $"-- Folder: {Name}";
-        }
-        
-        public override IEnumerable<string> ToChambersite(int spacing)
-        {
-            yield return $"// Folder: {Name}";
         }
 
         public override object Clone()

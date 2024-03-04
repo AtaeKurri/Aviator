@@ -10,7 +10,7 @@ namespace Aviator.Nodes.EditorNodePicker
     {
         public bool IsSeparator { get; set; }
         public string Tag { get; set; } = "";
-        public string Image { get; set; } = "";
+        public string Icon { get; set; } = "";
         public string Tooltip { get; set; } = "";
 
         public AbstractNodePicker.AddNode AddNodeMethod { get; set; }
@@ -24,7 +24,7 @@ namespace Aviator.Nodes.EditorNodePicker
             : this(false)
         {
             Tag = tag;
-            Image = image;
+            Icon = $"/Aviator;component/Images/{(string.IsNullOrEmpty(image) ? "Unknown.png" : image)}";
             Tooltip = tooltip;
             AddNodeMethod = addNodeMethod;
         }

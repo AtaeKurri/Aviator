@@ -8,7 +8,20 @@
         Title="Settings"
         Height="500"
         Width="700"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        Style="{StaticResource CustomWindowStyle}">
+    <Window.Resources>
+        <Style x:Key="VisibleLua" TargetType="{x:Type DockPanel}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLuaTarget, ElementName=window}" Value="True"/>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="VisibleCBS" TargetType="{x:Type DockPanel}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCBSTarget, ElementName=window}" Value="True"/>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <DockPanel>
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Right">
             <Button Content="Ok" Margin="5,5" Height="32" Width="64" Click="Ok_Click"/>
@@ -17,7 +30,21 @@
         </StackPanel>
         <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,0,-0.4,-0.4">
             <TabItem x:Name="GeneralTab" Header="General">
-
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="40*"/>
+                        <ColumnDefinition Width="121*"/>
+                        <ColumnDefinition Width="533*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Content="Editor Color Theme" HorizontalAlignment="Left" Margin="10,10,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <ComboBox IsEditable="True" ItemsSource="{Binding ThemeArray, ElementName=window}"
+                              HorizontalAlignment="Left" Height="26" Margin="10,10,0,0" VerticalAlignment="Top"
+                              Width="160" Grid.Column="2"
+                              Text="{Binding CurrentTheme, ElementName=window}"/>
+                    <Label Content="(Must restart to take effect)" HorizontalAlignment="Left" Margin="170,10,0,0"
+                            VerticalAlignment="Top" Width="333" Grid.Column="2" Height="26"/>
+                </Grid>
             </TabItem>
             <TabItem x:Name="CompileTab" Header="Compiler">
                 
@@ -29,13 +56,20 @@
                         <ColumnDefinition Width="121*"/>
                         <ColumnDefinition Width="533*"/>
                     </Grid.ColumnDefinitions>
-                    <Label Content="Compile Target" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
-                    <Label Content="(Restart needed)" HorizontalAlignment="Left" Margin="170,10,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Grid.Column="2" Height="26"/>
+                    <Label Content="Compile Target" HorizontalAlignment="Left" Margin="10,10,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
                     <ComboBox IsEditable="True" ItemsSource="{Binding CompileTargetArray, ElementName=window}"
                               HorizontalAlignment="Left" Height="26" Margin="10,10,0,0" VerticalAlignment="Top"
                               Width="160" Grid.Column="2"
                               Text="{Binding CompileTarget, ElementName=window}"/>
-                    <Label Content="LuaSTG Executable Path" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <DockPanel Style="{DynamicResource VisibleLua}">
+                        
+                    </DockPanel>
+                    <DockPanel Style="{DynamicResource VisibleCBS}">
+                        
+                    </DockPanel>
+                    <Label Content="LuaSTG Executable Path" HorizontalAlignment="Left" Margin="10,41,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
                     <TextBox HorizontalAlignment="Left" Height="26" Margin="10,41,0,0" VerticalAlignment="Top"
                              Width="470" Grid.Column="2" TextWrapping="Wrap"
                              Text="{Binding LuaSTGExecPath, ElementName=window}"
@@ -44,11 +78,31 @@
                             Height="26" Width="26" Grid.Column="2"
                             Margin="485,41,0,0"
                             Click="LuaSTGExecPath_Clicked"/>
-                    <Label Content="Project Internal Name" HorizontalAlignment="Left" Margin="10,72,0,0" VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"/>
+                    <Label Content="Project Internal Name" HorizontalAlignment="Left" Margin="10,72,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"
+                           ToolTip="Enter your Project (game) name without spaces and/or special characters."/>
                     <TextBox HorizontalAlignment="Left" Height="26" Margin="10,72,0,0" VerticalAlignment="Top"
                              Width="470" Grid.Column="2" TextWrapping="Wrap"
                              Text="{Binding ProjectInternalName, ElementName=window}"
                              VerticalContentAlignment="Center"/>
+                    <Label Content="Chambersite Output Path" HorizontalAlignment="Left" Margin="10,103,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"
+                           ToolTip="The output of the solution for Chambersite projects."/>
+                    <TextBox HorizontalAlignment="Left" Height="26" Margin="10,103,0,0" VerticalAlignment="Top"
+                             Width="470" Grid.Column="2" TextWrapping="Wrap"
+                             Text="{Binding CBSOutputPath, ElementName=window}"
+                             VerticalContentAlignment="Center"/>
+                    <Button Content="..." HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Height="26" Width="26" Grid.Column="2"
+                            Margin="485,103,0,0"
+                            Click="CBSOutputPath_Clicked"/>
+                    <Label Content="Mod Version" HorizontalAlignment="Left" Margin="10,134,0,0"
+                           VerticalAlignment="Top" Width="150" Grid.ColumnSpan="2" Height="26"
+                           ToolTip="LuaSTG Mod version (usually 4096)."/>
+                    <TextBox HorizontalAlignment="Left" Height="26" Margin="10,134,0,0" VerticalAlignment="Top"
+                               Width="470" Grid.Column="2" TextWrapping="Wrap"
+                               Text="{Binding ModVersion, ElementName=window}"
+                               VerticalContentAlignment="Center"/>
                 </Grid>
             </TabItem>
         </TabControl>

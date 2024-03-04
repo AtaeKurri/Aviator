@@ -11,6 +11,10 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 using Aviator.Core.EditorData.EditorTraces;
+using Aviator.Core.EditorData.Nodes.Attributes;
+using Aviator.Core.EditorData.EditorTraces.Traces;
+using System.Xml.Linq;
+using System.Windows.Controls;
 
 namespace Aviator.Core.EditorData.Nodes
 {
@@ -83,11 +87,6 @@ namespace Aviator.Core.EditorData.Nodes
         }
 
         [JsonIgnore]
-        public bool CanBeDeleted = false;
-        [JsonIgnore]
-        public bool CanBeBanned = false;
-
-        [JsonIgnore]
         public string DisplayString { get => ToString(); }
 
         [JsonIgnore]
@@ -107,10 +106,8 @@ namespace Aviator.Core.EditorData.Nodes
         [JsonIgnore]
         private TreeNode LinkedNext = null;
 
-        /// <summary>
-        /// Indicate that a node cannot have children.
-        /// </summary>
-        public bool IsInfertile = false;
+        [JsonIgnore]
+        public TreeNodeMeta MetaData { get; set; }
 
         [JsonIgnore]
         private ObservableCollection<TreeNode> children;
@@ -196,9 +193,11 @@ namespace Aviator.Core.EditorData.Nodes
 
         protected TreeNode()
         {
+            MetaData = new(this);
             Children = null;
             Attributes = null;
             isExpanded = true;
+            PropertyChanged += new PropertyChangedEventHandler(CheckTrace);
         }
 
         public TreeNode(Document workspace)
@@ -221,7 +220,16 @@ namespace Aviator.Core.EditorData.Nodes
 
         protected IEnumerable<string> ToLua(int spacing, IEnumerable<TreeNode> children)
         {
-            return null;
+            foreach (TreeNode t in children)
+            {
+                if (!t.isBanned)
+                {
+                    foreach (var a in t.ToLua(spacing))
+                    {
+                        yield return a;
+                    }
+                }
+            }
         }
 
         public virtual IEnumerable<string> ToChambersite(int spacing)
@@ -231,7 +239,16 @@ namespace Aviator.Core.EditorData.Nodes
 
         protected IEnumerable<string> ToChambersite(int spacing, IEnumerable<TreeNode> children)
         {
-            return null;
+            foreach (TreeNode t in children)
+            {
+                if (!t.isBanned)
+                {
+                    foreach (var a in t.ToChambersite(spacing))
+                    {
+                        yield return a;
+                    }
+                }
+            }
         }
 
         #endregion
@@ -312,12 +329,176 @@ namespace Aviator.Core.EditorData.Nodes
             isExpanded = source.isExpanded;
         }
 
+        public void FixParentDocument(Document document)
+        {
+            ParentWorkspace = document;
+            foreach (TreeNode node in Children)
+                node.FixParentDocument(document);
+        }
+
         #endregion
         #region Children
         
         public bool ValidateChild(TreeNode sourceNode, TreeNode nodeToValidate)
         {
+            if (MetaData.IsFolder)
+                return Parent.ValidateChild(sourceNode, nodeToValidate);
+            if (sourceNode.MetaData.IsInfertile)
+                return false;
+            if (!CheckRequiredParentsValidation(nodeToValidate))
+                return false;
+
+            Stack<TreeNode> stack = [];
+            stack.Push(sourceNode);
+            TreeNode cur;
+            while (stack.Count != 0)
+            {
+                cur = stack.Pop();
+                if (!cur.CheckRequiredAncestorValidation(cur, sourceNode.Parent, this, null)) return false;
+                foreach (TreeNode t in cur.Children)
+                    stack.Push(t);
+            }
             return true;
+        }
+
+        private bool CheckRequiredParentsValidation(TreeNode newNode)
+        {
+            if (newNode == null)
+                return false;
+            if (newNode.MetaData.RequireParent == null)
+                return true;
+            foreach (Type type in newNode.MetaData.RequireParent)
+            {
+                if (GetType().Equals(type))
+                    return true;
+            }
+            return false;
+        }
+
+        private bool CheckRequiredAncestorValidation(TreeNode Beg1, TreeNode End1, TreeNode Beg2, TreeNode End2)
+        {
+            Type[][] ts = MetaData.RequireAncestor;
+            if (ts == null)
+                return true;
+            List<Type[]> toSatisfiedGroups = ts.ToList();
+            List<Type> Satisfied = [];
+            List<Type[]> toRemove = [];
+            while (Beg1 != End1)
+            {
+                foreach (Type[] t1 in ts)
+                {
+                    foreach (Type t2 in t1)
+                    {
+                        if (Beg1.GetType().Equals(t2))
+                            Satisfied.Add(t2);
+                    }
+                }
+                foreach (Type[] t1 in toSatisfiedGroups)
+                {
+                    foreach (Type t2 in t1)
+                    {
+                        foreach (Type t3 in Satisfied)
+                        {
+                            if (t2 == t3 && !toRemove.Contains(t1))
+                                toRemove.Add(t1);
+                        }
+                    }
+                }
+                foreach (Type[] t1 in toRemove)
+                {
+                    toSatisfiedGroups.Remove(t1);
+                }
+                if (toSatisfiedGroups.Count == 0)
+                    return true;
+                Satisfied.Clear();
+                toRemove.Clear();
+                Beg1 = Beg1.Parent;
+            }
+            while (Beg2 != End2)
+            {
+                foreach (Type[] t1 in ts)
+                {
+                    foreach (Type t2 in t1)
+                    {
+                        if (Beg2.GetType().Equals(t2))
+                            Satisfied.Add(t2);
+                    }
+                }
+                foreach (Type[] t1 in toSatisfiedGroups)
+                {
+                    foreach (Type t2 in t1)
+                    {
+                        foreach (Type t3 in Satisfied)
+                        {
+                            if (t2 == t3 && !toRemove.Contains(t1))
+                                toRemove.Add(t1);
+                        }
+                    }
+                }
+                foreach (Type[] t1 in toRemove)
+                {
+                    toSatisfiedGroups.Remove(t1);
+                }
+                if (toSatisfiedGroups.Count == 0)
+                    return true;
+                Satisfied.Clear();
+                toRemove.Clear();
+                Beg2 = Beg2.Parent;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Return the first parent that's not a folder.
+        /// </summary>
+        /// <param name="node">The source node.</param>
+        /// <returns>The first non-folder parent; null if not found.</returns>
+        public TreeNode GetRealParent(TreeNode node)
+        {
+            TreeNode p = parent;
+            while (p != null && p.MetaData.IsFolder)
+            {
+                p = p.parent;
+            }
+            return p;
+        }
+
+        public IEnumerable<TreeNode> GetRealChildren()
+        {
+            foreach (TreeNode n in children)
+            {
+                if (n.Parent == this)
+                {
+                    if (n.MetaData.IsFolder)
+                    {
+                        foreach (TreeNode t in n.GetRealChildren())
+                        {
+                            yield return t;
+                        }
+                    }
+                    else
+                    {
+                        yield return n;
+                    }
+                }
+            }
+        }
+
+        public bool CanLogicallyDelete()
+        {
+            if (MetaData.IsFolder)
+            {
+                foreach (TreeNode t in GetRealChildren())
+                {
+                    if (t.MetaData.CannotBeDeleted)
+                        return false;
+                }
+                return true;
+            }
+            else
+            {
+                return !MetaData.CannotBeDeleted;
+            }
         }
 
         private void ChildrenChanged(object o, NotifyCollectionChangedEventArgs e)
@@ -394,7 +575,7 @@ namespace Aviator.Core.EditorData.Nodes
         public void ClearChildSelection()
         {
             isSelected = false;
-            foreach (TreeNode child in Children)
+            foreach (TreeNode child in children)
                 child.ClearChildSelection();
         }
 
@@ -420,31 +601,59 @@ namespace Aviator.Core.EditorData.Nodes
             }
         }
 
+        public TreeNode GetNearestEdited()
+        {
+            TreeNode node = parent;
+            if (node != null)
+            {
+                int id = node.children.IndexOf(this) - 1;
+                if (id >= 0)
+                {
+                    node = node.children[id];
+                }
+                return node;
+            }
+            else
+            {
+                return this;
+            }
+        }
+
         #endregion
         #region Traces
-
-        public void CheckTrace(object sender, PropertyChangedEventArgs e)
-        {
-            List<EditorTrace> traces = [];
-            GetTraces(); // TODO: Check if isBanned
-            Traces.Clear();
-            foreach (EditorTrace trace in traces)
-                Traces.Add(trace);
-            EditorTraceContainer.UpdateTraces(this);
-        }
 
         public List<EditorTrace> GetTraces()
         {
             return [];
         }
 
-        #endregion
+        public void CheckTrace(object sender, PropertyChangedEventArgs e)
+        {
+            List<EditorTrace> traces = [];
+            if (!isBanned) traces = GetTraces();
+            Traces.Clear();
+             
+            foreach (EditorTrace trace in traces)
+                Traces.Add(trace);
+            EditorTraceContainer.UpdateTraces(this);
+        }
 
+        #endregion
+        #region Common
+
+        public string Indent(int length)
+        {
+            return "".PadLeft(4 * length);
+        }
+
+        #endregion
         #region ToChambersite
 
-        public void CBS_NewNamespace(string name)
-        {
+        
 
+        public string CBS_NewView(string name)
+        {
+            return $"public class {name} : View\n";
         }
 
         #endregion

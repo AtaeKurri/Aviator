@@ -50,6 +50,28 @@ namespace Aviator.Core.EditorData.Documents
             }
         }
 
+        private string cBSOutputPath;
+        public string CBSOutputPath
+        {
+            get => cBSOutputPath;
+            set
+            {
+                cBSOutputPath = value;
+                RaisePropertyChanged("CBSOutputPath");
+            }
+        }
+
+        private string modVersion;
+        public string ModVersion
+        {
+            get => modVersion;
+            set
+            {
+                modVersion = value;
+                RaisePropertyChanged("ModVersion");
+            }
+        }
+
         #endregion
 
         public ProjectConfiguration(string pathToConfiguration)
@@ -65,10 +87,16 @@ namespace Aviator.Core.EditorData.Documents
                 return;
             FileIniDataParser parser = new();
             IniData data = new();
-            data.Sections.AddSection("Cfg");
-            data["Cfg"].AddKey("LuaSTGExecutablePath", "");
-            data["Cfg"].AddKey("CompileTarget", $"{(int)ECompileTarget.LuaSTG}");
-            data["Cfg"].AddKey("ProjectInternalName", "");
+            data.Sections.AddSection("Common");
+            data["Common"].AddKey("CompileTarget", $"{(int)ECompileTarget.LuaSTG}");
+            data["Common"].AddKey("ProjectInternalName", "");
+            
+            data.Sections.AddSection("LSTG");
+            data["LSTG"].AddKey("LuaSTGExecutablePath", "");
+            data["LSTG"].AddKey("ModVersion", "4096");
+
+            data.Sections.AddSection("CBS");
+            data["CBS"].AddKey("CBSOutputPath", "");
 
             parser.WriteFile(PathToConfiguration, data);
         }
@@ -78,9 +106,11 @@ namespace Aviator.Core.EditorData.Documents
             FileIniDataParser parser = new();
             IniData data = parser.ReadFile(PathToConfiguration);
 
-            data["Cfg"]["LuaSTGExecutablePath"] = LuaSTGExecutablePath;
-            data["Cfg"]["CompileTarget"] = $"{(int)CompileTarget}";
-            data["Cfg"]["ProjectInternalName"] = ProjectInternalName;
+            data["Common"]["CompileTarget"] = $"{(int)CompileTarget}";
+            data["Common"]["ProjectInternalName"] = ProjectInternalName;
+            data["LSTG"]["LuaSTGExecutablePath"] = LuaSTGExecutablePath;
+            data["LSTG"]["ModVersion"] = ModVersion;
+            data["CBS"]["CBSOutputPath"] = CBSOutputPath;
 
             parser.WriteFile(PathToConfiguration, data);
         }
@@ -90,9 +120,11 @@ namespace Aviator.Core.EditorData.Documents
             FileIniDataParser parser = new();
             IniData data = parser.ReadFile(PathToConfiguration);
 
-            LuaSTGExecutablePath = data["Cfg"]["LuaSTGExecutablePath"];
-            CompileTarget = (ECompileTarget)int.Parse(data["Cfg"]["CompileTarget"]);
-            ProjectInternalName = data["Cfg"]["ProjectInternalName"];
+            CompileTarget = (ECompileTarget)int.Parse(data["Common"]["CompileTarget"]);
+            ProjectInternalName = data["Common"]["ProjectInternalName"];
+            LuaSTGExecutablePath = data["LSTG"]["LuaSTGExecutablePath"];
+            ModVersion = data["LSTG"]["ModVersion"];
+            CBSOutputPath = data["CBS"]["CBSOutputPath"];
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
